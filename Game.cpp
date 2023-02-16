@@ -2,6 +2,11 @@
 #include "Vertex.h"
 #include "Input.h"
 #include "Helpers.h"
+#include "ImGui/imgui.h"
+#include "ImGui/imgui_impl_dx11.h"
+#include "ImGui/imgui_impl_win32.h"
+#include <memory>
+#include <iostream>
 
 // Needed for a helper function to load pre-compiled shader files
 #pragma comment(lib, "d3dcompiler.lib")
@@ -9,6 +14,8 @@
 
 // For the DirectX Math library
 using namespace DirectX;
+using namespace ImGui;
+using namespace std;
 
 // --------------------------------------------------------
 // Constructor
@@ -32,21 +39,26 @@ Game::Game(HINSTANCE hInstance)
 	CreateConsoleWindow(500, 120, 32, 120);
 	printf("Console window created successfully.  Feel free to printf() here.\n");
 #endif
-}
+}						 
 
-// --------------------------------------------------------
+// -----------------------Entity(triangle1);---------------------------------
 // Destructor - Clean up anything our game has created:
 //  - Delete all objects manually created within this class
 //  - Release() all Direct3D objects created within this class
 // --------------------------------------------------------
 Game::~Game()
 {
-	// Call delete or delete[] on any objects or arrays you've
+	// Call delete or delete[] on any objects or arrays you've	
 	// created using new or new[] within this class
 	// - Note: this is unnecessary if using smart pointers
 
 	// Call Release() on any Direct3D objects made within this class
 	// - Note: this is unnecessary for D3D objects stored in ComPtrs
+
+	// Game class destructor needs to clean up the ImGui library and free its memory
+	ImGui_ImplDX11_Shutdown();
+	ImGui_ImplWin32_Shutdown();
+	ImGui::DestroyContext();
 }
 
 // --------------------------------------------------------
@@ -82,6 +94,35 @@ void Game::Init()
 		context->VSSetShader(vertexShader.Get(), 0, 0);
 		context->PSSetShader(pixelShader.Get(), 0, 0);
 	}
+
+	// Initialize ImGui itself & platform/renderer backends
+	IMGUI_CHECKVERSION();
+	ImGui::CreateContext();
+	ImGui_ImplWin32_Init(hWnd);
+	ImGui_ImplDX11_Init(device.Get(), context.Get());
+	ImGui::StyleColorsDark();
+	
+	//cam = std::make_shared<Camera>((float)windowWidth / windowHeight, XMFLOAT3(0, 0, -1));
+
+	cams.push_back(make_shared<Camera>((float)windowWidth / windowHeight, XMFLOAT3(0, 0, -5), 70.0f));
+	cams.push_back(make_shared<Camera>((float)windowWidth / windowHeight, XMFLOAT3(0, 2, -1), 90.0f));
+	
+	activeCam = 0;
+
+	entities[0] = Entity(mesh0);
+	entities[1] = Entity(mesh1);
+	entities[2] = Entity(mesh2);
+	entities[3] = Entity(mesh0);
+	entities[4] = Entity(mesh1);
+	entityCount = sizeof(entities) / sizeof(Entity);
+
+	timer = 1.0f;
+	fps = 0.0f;
+	for (int i = 0; i < 4; i++)
+	{
+		colorTint[i] = 1.0f;
+	}
+
 }
 
 // --------------------------------------------------------
@@ -163,9 +204,9 @@ void Game::CreateGeometry()
 {
 	// Create some temporary variables to represent colors
 	// - Not necessary, just makes things more readable
-	XMFLOAT4 red	= XMFLOAT4(1.0f, 0.0f, 0.0f, 1.0f);
-	XMFLOAT4 green	= XMFLOAT4(0.0f, 1.0f, 0.0f, 1.0f);
-	XMFLOAT4 blue	= XMFLOAT4(0.0f, 0.0f, 1.0f, 1.0f);
+	XMFLOAT4 color0	= XMFLOAT4(1.0f, 0.8f, 0.6f, 1.0f);
+	XMFLOAT4 color1	= XMFLOAT4(0.25f, 0.5f, 0.75f, 1.0f);
+	XMFLOAT4 color2	= XMFLOAT4(0.20f, 0.20f, 0.70f, 1.0f);
 
 	// Set up the vertices of the triangle we would like to draw
 	// - We're going to copy this array, exactly as it exists in CPU memory
@@ -179,73 +220,42 @@ void Game::CreateGeometry()
 	//    knowing the exact size (in pixels) of the image/window/etc.  
 	// - Long story short: Resizing the window also resizes the triangle,
 	//    since we're describing the triangle in terms of the window itself
-	Vertex vertices[] =
+	Vertex vertices0[] =
 	{
-		{ XMFLOAT3(+0.0f, +0.5f, +0.0f), red },
-		{ XMFLOAT3(+0.5f, -0.5f, +0.0f), blue },
-		{ XMFLOAT3(-0.5f, -0.5f, +0.0f), green },
+		{ XMFLOAT3(-0.20f, +0.20f, +0.0f), color0 },
+		{ XMFLOAT3(+0.20f, +0.20f, +0.0f), color0 },
+		{ XMFLOAT3(+0.20f, -0.20f, +0.0f), color0 },
+		{ XMFLOAT3(-0.20f, -0.20f, +0.0f), color0 },
 	};
-
 	// Set up indices, which tell us which vertices to use and in which order
 	// - This is redundant for just 3 vertices, but will be more useful later
 	// - Indices are technically not required if the vertices are in the buffer 
 	//    in the correct order and each one will be used exactly once
 	// - But just to see how it's done...
-	unsigned int indices[] = { 0, 1, 2 };
+	unsigned int indices0[] = { 0, 1, 2, 0, 2, 3 };
+	mesh0 = std::make_shared<Mesh>(vertices0, 4, indices0, 6, device, context);
 
 
-	// Create a VERTEX BUFFER
-	// - This holds the vertex data of triangles for a single object
-	// - This buffer is created on the GPU, which is where the data needs to
-	//    be if we want the GPU to act on it (as in: draw it to the screen)
+	Vertex vertices1[] =
 	{
-		// First, we need to describe the buffer we want Direct3D to make on the GPU
-		//  - Note that this variable is created on the stack since we only need it once
-		//  - After the buffer is created, this description variable is unnecessary
-		D3D11_BUFFER_DESC vbd	= {};
-		vbd.Usage				= D3D11_USAGE_IMMUTABLE;	// Will NEVER change
-		vbd.ByteWidth			= sizeof(Vertex) * 3;       // 3 = number of vertices in the buffer
-		vbd.BindFlags			= D3D11_BIND_VERTEX_BUFFER; // Tells Direct3D this is a vertex buffer
-		vbd.CPUAccessFlags		= 0;	// Note: We cannot access the data from C++ (this is good)
-		vbd.MiscFlags			= 0;
-		vbd.StructureByteStride = 0;
+		{ XMFLOAT3(-1.0f, +1.0f, +0.0f), color1 },
+		{ XMFLOAT3(-0.75f, +1.0f, +0.0f), color1 },
+		{ XMFLOAT3(-1.0f, -0.75f, +0.0f), color1 },
+	};
+	unsigned int indices1[] = { 0, 1, 2 };
+	mesh1 = std::make_shared<Mesh>(vertices1, 3, indices1, 3, device, context);
 
-		// Create the proper struct to hold the initial vertex data
-		// - This is how we initially fill the buffer with data
-		// - Essentially, we're specifying a pointer to the data to copy
-		D3D11_SUBRESOURCE_DATA initialVertexData = {};
-		initialVertexData.pSysMem = vertices; // pSysMem = Pointer to System Memory
 
-		// Actually create the buffer on the GPU with the initial data
-		// - Once we do this, we'll NEVER CHANGE DATA IN THE BUFFER AGAIN
-		device->CreateBuffer(&vbd, &initialVertexData, vertexBuffer.GetAddressOf());
-	}
-
-	// Create an INDEX BUFFER
-	// - This holds indices to elements in the vertex buffer
-	// - This is most useful when vertices are shared among neighboring triangles
-	// - This buffer is created on the GPU, which is where the data needs to
-	//    be if we want the GPU to act on it (as in: draw it to the screen)
+	Vertex vertices2[] =
 	{
-		// Describe the buffer, as we did above, with two major differences
-		//  - Byte Width (3 unsigned integers vs. 3 whole vertices)
-		//  - Bind Flag (used as an index buffer instead of a vertex buffer) 
-		D3D11_BUFFER_DESC ibd	= {};
-		ibd.Usage				= D3D11_USAGE_IMMUTABLE;	// Will NEVER change
-		ibd.ByteWidth			= sizeof(unsigned int) * 3;	// 3 = number of indices in the buffer
-		ibd.BindFlags			= D3D11_BIND_INDEX_BUFFER;	// Tells Direct3D this is an index buffer
-		ibd.CPUAccessFlags		= 0;	// Note: We cannot access the data from C++ (this is good)
-		ibd.MiscFlags			= 0;
-		ibd.StructureByteStride = 0;
-
-		// Specify the initial data for this buffer, similar to above
-		D3D11_SUBRESOURCE_DATA initialIndexData = {};
-		initialIndexData.pSysMem = indices; // pSysMem = Pointer to System Memory
-
-		// Actually create the buffer with the initial data
-		// - Once we do this, we'll NEVER CHANGE THE BUFFER AGAIN
-		device->CreateBuffer(&ibd, &initialIndexData, indexBuffer.GetAddressOf());
-	}
+		{ XMFLOAT3(+0.5f, +0.5f, +0.0f), color2 },
+		{ XMFLOAT3(+0.75f, +0.25f, +0.0f), color2 },
+		{ XMFLOAT3(+0.25f, +0.25f, +0.0f), color2 },
+		{ XMFLOAT3(+0.75f, -0.5f, +0.0f), color2 },
+		{ XMFLOAT3(+0.25f, -0.5f, +0.0f), color2 },
+	};
+	unsigned int indices2[] = { 0, 1, 2, 2, 1, 3, 2, 3, 4 };
+	mesh2 = std::make_shared<Mesh>(vertices2, 5, indices2, 9, device, context);
 }
 
 
@@ -257,14 +267,109 @@ void Game::CreateGeometry()
 void Game::OnResize()
 {
 	// Handle base-level DX resize stuff
+	for (int i = 0; i < cams.size(); i++)
+	{
+		cams[i]->UpdateProjectionMatrix((float)this->windowWidth / this->windowHeight);
+	}
 	DXCore::OnResize();
+}
+
+/// <summary>
+/// Helper function for creating dropdown tree nodes
+/// </summary>
+/// <param name="label">tree node name</param>
+/// <param name="object">object to showcase in tree node</param>
+void Node(const char* label, Entity* object)
+{
+	if (TreeNode(label))
+	{
+		float position[3] = { object->GetTransform()->GetPosition().x, object->GetTransform()->GetPosition().y, object->GetTransform()->GetPosition().z };
+		float orientation[4] = { object->GetTransform()->GetOrientation().x, object->GetTransform()->GetOrientation().y, object->GetTransform()->GetOrientation().z, object->GetTransform()->GetOrientation().w };
+		float scale[3] = { object->GetTransform()->GetScale().x, object->GetTransform()->GetScale().y, object->GetTransform()->GetScale().z };
+		DragFloat3("Position", position, 0.01f);
+		DragFloat4("Rotation (Radians)", orientation, 0.01f, -1, 1);
+		DragFloat3("Scale", scale, 0.01f);
+		TreePop();
+		object->GetTransform()->SetPosition(position[0], position[1], position[2]);
+		object->GetTransform()->SetOrientation(XMFLOAT4(orientation[0], orientation[1], orientation[2], orientation[3]));
+		object->GetTransform()->SetScale(scale[0], scale[1], scale[2]);
+	}
 }
 
 // --------------------------------------------------------
 // Update your game here - user input, move objects, AI, etc.
 // --------------------------------------------------------
 void Game::Update(float deltaTime, float totalTime)
-{
+{ 
+	entities[0].GetTransform()->MoveAbsolute(0.25f * deltaTime, 0, 0);
+	entities[1].GetTransform()->MoveAbsolute(0.0f, -0.25f * deltaTime, 0.0f);
+	entities[2].GetTransform()->Scale(0.0f, 0.25f * deltaTime, 0.0f);
+	entities[3].GetTransform()->Rotate(0, 0, 0.25f * deltaTime);
+	entities[4].GetTransform()->MoveAbsolute(0.25f * deltaTime, 0.0f, 0.0f);
+	entities[4].GetTransform()->Scale(0, 0.25f * deltaTime, 0.0f);
+	entities[4].GetTransform()->Rotate(0, 0, -0.25f * deltaTime);
+	
+	// The imgui stuff needs to be done first
+	// Feed fresh input data to ImGui
+	ImGuiIO& io = ImGui::GetIO();
+	io.DeltaTime = deltaTime;
+	io.DisplaySize.x = (float)this->windowWidth;
+	io.DisplaySize.y = (float)this->windowHeight;
+
+	// Reset the frame
+	ImGui_ImplDX11_NewFrame();
+	ImGui_ImplWin32_NewFrame();
+	ImGui::NewFrame();
+
+	// Determine new input capture
+	Input& input = Input::GetInstance();
+	input.SetKeyboardCapture(io.WantCaptureKeyboard);
+	input.SetMouseCapture(io.WantCaptureMouse);
+
+	// Show the demo window
+	ImGui::ShowDemoWindow();
+
+	// imgui UI code happens after imgui frame setup
+
+	// I had to add two new fields to the Game class for this to work: timer and fps
+	// The timer and fps helps to control the ImGui::GetIO().Framerate
+	// So the fps gets updated less frequently and we don't get a bunch of flashing new number updates every 0.00001 seconds
+	ImGui::Begin("Basic Scene Info");
+	timer -= ImGui::GetIO().DeltaTime;
+	if (timer <= 0.0f) {
+		fps = ImGui::GetIO().Framerate;
+		timer = 1.0f;
+	}
+	ImGui::Text("Framerate: %f", fps);
+	ImGui::Text("Window: %f x %f", ImGui::GetIO().DisplaySize.x, ImGui::GetIO().DisplaySize.y);
+	ImGui::ColorEdit4("Color Tint", colorTint);
+	ImGui::DragInt("Active Cam", &activeCam, 1.0f, 0, 1);
+	ImGui::Text("Cam Pos: %f, %f, %f", cams[activeCam]->transform.GetPosition().x, cams[activeCam]->transform.GetPosition().y, cams[activeCam]->transform.GetPosition().z);
+	ImGui::Text("Cam FOV: %f", cams[activeCam]->fov);
+	ImGui::Text("Cam Aspect Ratio: %f", cams[activeCam]->aspRat);
+
+	if (CollapsingHeader("Inspector"))
+	{
+		if (TreeNode("Scene Entities"))
+		{
+			Node("Object 0", &entities[0]);
+			Node("Object 1", &entities[1]);
+			Node("Object 2", &entities[2]);
+			Node("Object 3", &entities[3]); 
+			Node("Object 4", &entities[4]);
+			TreePop();
+		}
+
+
+	}
+
+	ImGui::End();
+	
+	for (int i = 0; i < 5; i++) {
+		entities[i].GetTransform()->UpdateMatrices();
+	}
+
+	cams[activeCam]->Update(deltaTime);
 	// Example input checking: Quit if the escape key is pressed
 	if (Input::GetInstance().KeyDown(VK_ESCAPE))
 		Quit();
@@ -293,24 +398,9 @@ void Game::Draw(float deltaTime, float totalTime)
 	UINT stride = sizeof(Vertex);
 	UINT offset = 0;
 	{
-		// Set buffers in the input assembler (IA) stage
-		//  - Do this ONCE PER OBJECT, since each object may have different geometry
-		//  - For this demo, this step *could* simply be done once during Init()
-		//  - However, this needs to be done between EACH DrawIndexed() call
-		//     when drawing different geometry, so it's here as an example
-		context->IASetVertexBuffers(0, 1, vertexBuffer.GetAddressOf(), &stride, &offset);
-		context->IASetIndexBuffer(indexBuffer.Get(), DXGI_FORMAT_R32_UINT, 0);
-
-		// Tell Direct3D to draw
-		//  - Begins the rendering pipeline on the GPU
-		//  - Do this ONCE PER OBJECT you intend to draw
-		//  - This will use all currently set Direct3D resources (shaders, buffers, etc)
-		//  - DrawIndexed() uses the currently set INDEX BUFFER to look up corresponding
-		//     vertices in the currently set VERTEX BUFFER
-		context->DrawIndexed(
-			3,     // The number of indices to use (we could draw a subset if we wanted)
-			0,     // Offset to the first index we want to use
-			0);    // Offset to add to each index when looking up vertices
+		for (int i = 0; i < 5; i++) {
+			entities[i].Draw(device, context, colorTint, cams[activeCam]);
+		}
 	}
 
 	// Frame END
@@ -321,6 +411,11 @@ void Game::Draw(float deltaTime, float totalTime)
 		//  - Puts the results of what we've drawn onto the window
 		//  - Without this, the user never sees anything
 		bool vsyncNecessary = vsync || !deviceSupportsTearing || isFullscreen;
+
+		// the imgui stuff should be drawn last here, right before the swap chain presents
+		ImGui::Render();
+		ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
+
 		swapChain->Present(
 			vsyncNecessary ? 1 : 0,
 			vsyncNecessary ? 0 : DXGI_PRESENT_ALLOW_TEARING);

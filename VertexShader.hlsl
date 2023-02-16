@@ -1,3 +1,20 @@
+// define constant buffer at the top
+// important that every line of code is typed correctly and in this order
+
+// ExternalData is an identifier used to signify the programmer's intent for this buffer, good for organization
+
+// : register(b0) tells the shader which slot we're referring to when accessing the variables in this cbuffer
+// binds resource or buffer to pipeline
+// b0 = the buffer register at index 0
+cbuffer ExternalData : register(b0) 
+{
+	// declare variables that hold the external data (data sent in from c++)
+	// order at which they're declared matters (they define where in the buffer these variables will get their data)
+	float4 colorTint;
+	matrix world;
+	matrix viewMat;
+	matrix projMat;
+}
 
 // Struct representing a single vertex worth of data
 // - This should match the vertex definition in our C++ code
@@ -51,12 +68,14 @@ VertexToPixel main( VertexShaderInput input )
 	// - Each of these components is then automatically divided by the W component, 
 	//   which we're leaving at 1.0 for now (this is more useful when dealing with 
 	//   a perspective projection matrix, which we'll get to in the future).
-	output.screenPosition = float4(input.localPosition, 1.0f);
+	matrix wvp = mul(projMat, mul(viewMat, world));
+	//output.screenPosition = mul(world, float4(input.localPosition, 1.0f));
+	output.screenPosition = mul(wvp, float4(input.localPosition, 1.0f));
 
 	// Pass the color through 
 	// - The values will be interpolated per-pixel by the rasterizer
 	// - We don't need to alter it here, but we do need to send it to the pixel shader
-	output.color = input.color;
+	output.color = input.color * colorTint;
 
 	// Whatever we return will make its way through the pipeline to the
 	// next programmable stage we're using (the pixel shader for now)
