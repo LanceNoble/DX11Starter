@@ -71,7 +71,6 @@ void Camera::UpdateViewMatrix()
 	XMVECTOR upCopy = XMLoadFloat3(&up);
 	XMMATRIX viewMatCopy = XMLoadFloat4x4(&viewMat);
 	viewMatCopy = XMMatrixLookToLH(position, direction, upCopy);
-	//viewMatCopy = XMMatrixLookToLH(position, direction, upCopy);
 	XMStoreFloat4x4(&viewMat, viewMatCopy);
 }
 
@@ -93,11 +92,29 @@ void Camera::Update(float dt)
 	}
 	if (input.KeyDown('A'))
 	{
-		transform.MoveRelative(moveSp * dt * -1, 0, 0);
+		//transform.MoveRelative(moveSp * dt * -1, 0, 0);
+		XMFLOAT3 offset = XMFLOAT3();
+		XMFLOAT3 up = XMFLOAT3(0,1,0);
+		XMVECTOR upCopy = XMLoadFloat3(&up);
+		XMFLOAT3 forward = transform.GetForward();
+		XMVECTOR forwardCopy = XMLoadFloat3(&forward);
+		XMVECTOR offsetCopy = XMVector3Cross(upCopy, forwardCopy);
+		offsetCopy = offsetCopy / -999;
+		XMStoreFloat3(&offset, offsetCopy);
+		transform.MoveAbsolute(offset);
 	}
 	if (input.KeyDown('D'))
 	{
-		transform.MoveRelative(moveSp * dt, 0, 0);
+		//transform.MoveRelative(moveSp * dt, 0, 0);
+		XMFLOAT3 offset = XMFLOAT3();
+		XMFLOAT3 up = XMFLOAT3(0, 1, 0);
+		XMVECTOR upCopy = XMLoadFloat3(&up);
+		XMFLOAT3 forward = transform.GetForward();
+		XMVECTOR forwardCopy = XMLoadFloat3(&forward);
+		XMVECTOR offsetCopy = XMVector3Cross(upCopy, forwardCopy);
+		offsetCopy = offsetCopy / 999;
+		XMStoreFloat3(&offset, offsetCopy);
+		transform.MoveAbsolute(offset);
 	}
 	if (input.KeyDown(' '))
 	{

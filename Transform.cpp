@@ -46,9 +46,9 @@ void Transform::SetPosition(DirectX::XMFLOAT3 position)
 /// <param name="roll">the roll of the new position</param>
 void Transform::SetOrientation(float pitch, float yaw, float roll)
 {
-	XMVECTOR quat = XMQuaternionRotationRollPitchYaw(pitch, yaw, roll);
-	quat = XMQuaternionNormalize(quat);
-	XMStoreFloat4(&orientation, quat);
+	//XMVECTOR quat = XMQuaternionRotationRollPitchYaw(pitch, yaw, roll);
+	//quat = XMQuaternionNormalize(quat);
+	XMStoreFloat4(&orientation, XMQuaternionRotationRollPitchYaw(pitch, yaw, roll));
 	//XMVECTOR orientationCopy = XMLoadFloat4(&orientation);
 	//XMVECTOR rotQuat = XMQuaternionRotationRollPitchYaw(pitch, yaw, roll);
 	//orientationCopy = XMQuaternionMultiply(orientationCopy, rotQuat);
@@ -62,9 +62,9 @@ void Transform::SetOrientation(float pitch, float yaw, float roll)
 /// <param name="orientation">The new orientation</param>
 void Transform::SetOrientation(DirectX::XMFLOAT4 orientation)
 {
-	XMVECTOR orientationCopy = XMLoadFloat4(&orientation);
-	orientationCopy = XMQuaternionNormalize(orientationCopy);
-	XMStoreFloat4(&this->orientation, orientationCopy);
+	//XMVECTOR orientationCopy = XMLoadFloat4(&orientation);
+	//orientationCopy = XMQuaternionNormalize(orientationCopy);
+	XMStoreFloat4(&orientation, XMLoadFloat4(&orientation));
 }
 
 /// <summary>
@@ -155,8 +155,8 @@ void Transform::MoveAbsolute(DirectX::XMFLOAT3 offset)
 {
 	XMVECTOR posCopy = XMLoadFloat3(&position);
 	XMVECTOR offCopy = XMLoadFloat3(&offset);
-	posCopy = XMVectorAdd(posCopy, offCopy);
-	XMStoreFloat3(&position, posCopy);
+	//posCopy = XMVectorAdd(posCopy, offCopy);
+	XMStoreFloat3(&position, XMVectorAdd(posCopy, offCopy));
 }
 
 /// <summary>
@@ -169,13 +169,14 @@ void Transform::MoveRelative(float x, float y, float z)
 {
 	XMFLOAT3 eulers = XMFLOAT3(x, y, z);
 	XMVECTOR eulersCopy = XMLoadFloat3(&eulers);
-	XMVECTOR quat = XMLoadFloat4(&this->orientation);
+	XMVECTOR quat = XMLoadFloat4(&orientation);
 	XMVECTOR eulersRotated = XMVector3Rotate(eulersCopy, quat);
 	XMVECTOR position = XMLoadFloat3(&this->position);
 	position = XMVectorAdd(eulersRotated, position);
 	//position += eulersRotated;
 	XMStoreFloat3(&this->position, position);
 }
+
 
 /// <summary>
 /// rotate entity
@@ -187,9 +188,7 @@ void Transform::Rotate(float pitch, float yaw, float roll)
 {
 	XMVECTOR orientationCopy = XMLoadFloat4(&orientation);
 	XMVECTOR rotQuat = XMQuaternionRotationRollPitchYaw(pitch, yaw, roll);
-	rotQuat = XMQuaternionNormalize(rotQuat);
-	orientationCopy = XMQuaternionMultiply(orientationCopy, rotQuat);
-	XMStoreFloat4(&orientation, orientationCopy);
+	XMStoreFloat4(&orientation, XMQuaternionMultiply(orientationCopy, rotQuat));
 }
 
 /// <summary>
@@ -200,10 +199,8 @@ void Transform::Rotate(DirectX::XMFLOAT3 rotation)
 {
 	XMVECTOR orientationCopy = XMLoadFloat4(&orientation);
 	XMVECTOR rotQuat = XMLoadFloat3(&rotation);
-	rotQuat = XMQuaternionRotationRollPitchYawFromVector(rotQuat);
-	rotQuat = XMQuaternionNormalize(rotQuat);
-	orientationCopy = XMQuaternionMultiply(orientationCopy, rotQuat);
-	XMStoreFloat4(&orientation, orientationCopy);
+	//rotQuat = XMQuaternionRotationRollPitchYawFromVector(rotQuat);
+	XMStoreFloat4(&orientation, XMQuaternionMultiply(orientationCopy, rotQuat));
 }
 
 /// <summary>
