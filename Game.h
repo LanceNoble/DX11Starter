@@ -4,7 +4,6 @@
 #include <DirectXMath.h>
 #include <wrl/client.h>
 #include "DXCore.h"
-#include "BufferStructs.h"
 #include "Entity.h"
 #include "Mesh.h"
 #include "Transform.h"
@@ -24,15 +23,19 @@ class Game: public DXCore {
 		void CreateGeometry();
 		std::shared_ptr<SimpleVertexShader> vertexShader;
 		std::shared_ptr<SimplePixelShader> pixelShader;
+		std::shared_ptr<SimplePixelShader> customPS;
 		std::shared_ptr<Material> mat0;
 		std::shared_ptr<Material> mat1;
 		std::shared_ptr<Material> mat2;
 		std::shared_ptr<Mesh> mesh0;
 		std::shared_ptr<Mesh> mesh1;
 		std::shared_ptr<Mesh> mesh2;
+		float orientation0[3] = { 0.0f,0.0f,0.0f };
+		float orientation1[3] = { 0.0f,0.0f,0.0f };
+		float orientation2[3] = { 0.0f,0.0f,0.0f };
 		std::vector<std::shared_ptr<Camera>> cams;
 		int activeCam = 0;
-		Entity entities[5];
+		Entity entities[3];
 		int entityCount = 0;
 		float timer = 0;
 		float fps = 0;

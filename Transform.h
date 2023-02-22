@@ -4,33 +4,27 @@ class Transform
 {
 private:
 	DirectX::XMFLOAT3 position;
+	DirectX::XMFLOAT4 orientation;
 	DirectX::XMFLOAT3 scale;
 	DirectX::XMFLOAT4X4 world;
 	DirectX::XMFLOAT4X4 worldInverseTranspose;
-	DirectX::XMFLOAT4 orientation;
 public:
 	Transform();
-	void SetPosition(float x, float y, float z);
-	void SetPosition(DirectX::XMFLOAT3 position);
-	void SetOrientation(float pitch, float yaw, float roll);
-	void SetOrientation(DirectX::XMFLOAT4 rotation); // XMFLOAT3 for euler
-	void SetScale(float x, float y, float z);
-	void SetScale(DirectX::XMFLOAT3 scale);
+	void SetPosition(float, float, float);
+	void SetOrientation(float, float, float);
+	void SetOrientation(DirectX::XMFLOAT4);
+	void SetScale(float, float, float);
 	DirectX::XMFLOAT3 GetPosition();
-	DirectX::XMFLOAT4 GetOrientation(); // XMFLOAT3 GetPitchYawRoll() for euler
+	DirectX::XMFLOAT4 GetOrientation();
 	DirectX::XMFLOAT3 GetScale();
 	DirectX::XMFLOAT4X4 GetWorldMatrix();
 	DirectX::XMFLOAT4X4 GetWorldInverseTransposeMatrix();
-	void MoveAbsolute(float x, float y, float z);
-	void MoveAbsolute(DirectX::XMFLOAT3 offset);
-	void MoveRelative(float x, float y, float z);
-	void Rotate(float pitch, float yaw, float roll);
-	void Rotate(DirectX::XMFLOAT3 rotation);
-	void Scale(float x, float y, float z);
-	void Scale(DirectX::XMFLOAT3 scalar);
+	void MoveAbsolute(float, float, float);
+	void MoveRelative(float, float, float);
+	void Rotate(float, float, float);
+	void Scale(float, float, float);
 	DirectX::XMFLOAT3 GetRight();
 	DirectX::XMFLOAT3 GetUp();
 	DirectX::XMFLOAT3 GetForward();
 	void UpdateMatrices();
 };
-

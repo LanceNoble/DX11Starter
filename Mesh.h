@@ -5,6 +5,7 @@
 #include <DirectXMath.h>
 #include <vector>
 #include "Vertex.h"
+
 class Mesh
 {
 	private:
@@ -12,15 +13,10 @@ class Mesh
 		Microsoft::WRL::ComPtr<ID3D11Buffer> indexBuffer;
 		Microsoft::WRL::ComPtr<ID3D11DeviceContext> deviceContext;
 		int indexCount = 0;
-		int vertexCount = 0;
-
+		void MakeVB(Vertex*, int, Microsoft::WRL::ComPtr<ID3D11Device>);
+		void MakeIB(unsigned int*, int, Microsoft::WRL::ComPtr<ID3D11Device>);
 	public:
-
-		Mesh(Vertex* vertices, int vertexCount, unsigned int* indices, int indexCount, Microsoft::WRL::ComPtr<ID3D11Device> device, Microsoft::WRL::ComPtr<ID3D11DeviceContext> deviceContext);
-		Mesh(const wchar_t* fileName, Microsoft::WRL::ComPtr<ID3D11Device> device, Microsoft::WRL::ComPtr<ID3D11DeviceContext> deviceContext);
-		~Mesh();
-		ID3D11Buffer* GetVertexBuffer();
-		ID3D11Buffer* GetIndexBuffer();
-		int GetIndexCount();
+		Mesh(Vertex*, int, unsigned int*, int, Microsoft::WRL::ComPtr<ID3D11Device>, Microsoft::WRL::ComPtr<ID3D11DeviceContext>);
+		Mesh(const wchar_t*, Microsoft::WRL::ComPtr<ID3D11Device>, Microsoft::WRL::ComPtr<ID3D11DeviceContext>);
 		void Draw();
 };

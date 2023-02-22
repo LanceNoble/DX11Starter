@@ -1,6 +1,7 @@
 #include "Camera.h"
 #include "Input.h"
 
+
 using namespace DirectX;
 
 /// <summary>
@@ -13,7 +14,7 @@ Camera::Camera(float aspRat, XMFLOAT3 initPos, float fov)
 {
 	this->aspRat = aspRat;
 	this->initPos = initPos;
-	transform.SetPosition(this->initPos);
+	transform.SetPosition(initPos.x, initPos.y, initPos.z);
 	XMVECTOR initRotCopy = XMLoadFloat4(&initRot);
 	initRotCopy = XMQuaternionIdentity();
 	XMStoreFloat4(&initRot, initRotCopy);
@@ -21,9 +22,8 @@ Camera::Camera(float aspRat, XMFLOAT3 initPos, float fov)
 	nearClip = 0.1f;
 	farClip = 900;
 	moveSp = 1;
-	lookSp = 0.001f;
-	isPerspective = true;
-
+	lookSpX = 0.001f;
+	lookSpY = 0.001f;
 	UpdateViewMatrix();
 	UpdateProjectionMatrix(aspRat);
 }
@@ -99,9 +99,10 @@ void Camera::Update(float dt)
 		XMFLOAT3 forward = transform.GetForward();
 		XMVECTOR forwardCopy = XMLoadFloat3(&forward);
 		XMVECTOR offsetCopy = XMVector3Cross(upCopy, forwardCopy);
-		offsetCopy = offsetCopy / -999;
+		//offsetCopy = offsetCopy / -999;
+		offsetCopy = offsetCopy * -dt;
 		XMStoreFloat3(&offset, offsetCopy);
-		transform.MoveAbsolute(offset);
+		transform.MoveAbsolute(offset.x, offset.y, offset.z);
 	}
 	if (input.KeyDown('D'))
 	{
@@ -112,9 +113,10 @@ void Camera::Update(float dt)
 		XMFLOAT3 forward = transform.GetForward();
 		XMVECTOR forwardCopy = XMLoadFloat3(&forward);
 		XMVECTOR offsetCopy = XMVector3Cross(upCopy, forwardCopy);
-		offsetCopy = offsetCopy / 999;
+		//offsetCopy = offsetCopy / 999;
+		offsetCopy = offsetCopy * dt;
 		XMStoreFloat3(&offset, offsetCopy);
-		transform.MoveAbsolute(offset);
+		transform.MoveAbsolute(offset.x, offset.y, offset.z);
 	}
 	if (input.KeyDown(' '))
 	{
@@ -126,14 +128,28 @@ void Camera::Update(float dt)
 	}
 	if (input.MouseLeftDown())
 	{
-		float cursorMovementX = input.GetMouseXDelta() * lookSp;
-		float cursorMovementY = input.GetMouseYDelta() * lookSp;
+		float cursorMovementX = input.GetMouseXDelta() * lookSpX;
+		float cursorMovementY = input.GetMouseYDelta() * lookSpY;
 
-		if (cursorMovementY > -1.57 && cursorMovementY < 1.57)
+		XMFLOAT3 forward = transform.GetForward();
+		XMVECTOR forwardCopy = XMLoadFloat3(&forward);
+		XMFLOAT3 worldUp = XMFLOAT3(0, 1, 0);
+		XMVECTOR worldUpCopy = XMLoadFloat3(&worldUp);
+		XMVECTOR angleBtwn = XMVector3AngleBetweenVectors(forwardCopy, worldUpCopy);
+		XMFLOAT3 angleBtwnGen;
+		XMStoreFloat3(&angleBtwnGen, angleBtwn);
+
+		if (angleBtwnGen.y >= 3 || angleBtwnGen.y <= 0.1)
 		{
-			transform.Rotate(0, cursorMovementX, 0);
+			lookSpY = 0.00001f;
 		}
+		else 
+		{
+			lookSpY = 0.001f;
+		}
+		
 		transform.Rotate(cursorMovementY, 0, 0);
+		transform.Rotate(0, cursorMovementX, 0);
 	}
 	UpdateViewMatrix();
 }

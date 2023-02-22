@@ -4,19 +4,15 @@
 class Camera
 {
 private:
-	
-
 	DirectX::XMFLOAT4X4 viewMat;
 	DirectX::XMFLOAT4X4 projMat;
 	DirectX::XMFLOAT4 initRot;
 	DirectX::XMFLOAT3 initPos;
-	
-	
 	float nearClip;
 	float farClip;
 	float moveSp;
-	float lookSp;
-	float isPerspective;
+	float lookSpX;
+	float lookSpY;
 public:
 	Transform transform;
 	float fov;

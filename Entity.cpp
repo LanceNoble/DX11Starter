@@ -1,5 +1,4 @@
 #include "Entity.h"
-
 #include "ImGui/imgui.h"
 #include "ImGui/imgui_impl_dx11.h"
 #include "ImGui/imgui_impl_win32.h"
@@ -64,10 +63,14 @@ void Entity::Draw(Microsoft::WRL::ComPtr<ID3D11Device> device, Microsoft::WRL::C
 {
 	shared_ptr<SimpleVertexShader> vs = mat->GetVertexShader();
 	// Very important that string parameters match the variable names in your cbuffer
-	vs->SetFloat4("colorTint", mat->GetColorTint());
+	//vs->SetFloat4("colorTint", mat->GetColorTint());
 	vs->SetMatrix4x4("world", transform.GetWorldMatrix());
 	vs->SetMatrix4x4("viewMat", cam->GetViewMat());
 	vs->SetMatrix4x4("projMat", cam->GetProjMat());
 	vs->CopyAllBufferData();
+
+	shared_ptr<SimplePixelShader> ps = mat->GetPixelShader();
+	ps->SetFloat4("colorTint", mat->GetColorTint());
+	ps->CopyAllBufferData();
 	mesh->Draw();
 }

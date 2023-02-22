@@ -1,7 +1,7 @@
 #pragma once
 #include "Transform.h"
 #include "Mesh.h"
-#include "BufferStructs.h"
+
 #include "Camera.h"
 #include "Material.h"
 #include <memory>

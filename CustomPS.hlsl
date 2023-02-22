@@ -1,3 +1,10 @@
+//must set proper compiler options for every new shader added
+cbuffer ExternalData : register(b0)
+{
+	// declare variables that hold the external data (data sent in from c++)
+	// order at which they're declared matters (they define where in the buffer these variables will get their data)
+	float4 colorTint;
+}
 
 // Struct representing the data we expect to receive from earlier pipeline stages
 // - Should match the output of our corresponding vertex shader
@@ -12,7 +19,8 @@ struct VertexToPixel
 	//  |    |                |
 	//  v    v                v
 	float4 screenPosition	: SV_POSITION;
-	float4 color			: COLOR;
+	//float4 color			: COLOR;
+	float2 uv : TEXCOORD;
 };
 
 // --------------------------------------------------------
@@ -26,9 +34,5 @@ struct VertexToPixel
 // --------------------------------------------------------
 float4 main(VertexToPixel input) : SV_TARGET
 {
-	// Just return the input color
-	// - This color (like most values passing through the rasterizer) is 
-	//   interpolated for each pixel between the corresponding vertices 
-	//   of the triangle we're rendering
-	return input.color;
+    return float4(sin(input.screenPosition.xy * 0.25), tan(input.uv * 30)) * colorTint;
 }

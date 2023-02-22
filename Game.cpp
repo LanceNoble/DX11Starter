@@ -48,6 +48,7 @@ Game::Game(HINSTANCE hInstance)
 // --------------------------------------------------------
 Game::~Game()
 {
+
 	// Call delete or delete[] on any objects or arrays you've	
 	// created using new or new[] within this class
 	// - Note: this is unnecessary if using smart pointers
@@ -82,17 +83,6 @@ void Game::Init()
 		// geometric primitives (points, lines or triangles) we want to draw.  
 		// Essentially: "What kind of shape should the GPU draw with our vertices?"
 		context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-
-		// Ensure the pipeline knows how to interpret all the numbers stored in
-		// the vertex buffer. For this course, all of your vertices will probably
-		// have the same layout, so we can just set this once at startup.
-		//context->IASetInputLayout(inputLayout.Get());
-
-		// Set the active vertex and pixel shaders
-		//  - Once you start applying different shaders to different objects,
-		//    these calls will need to happen multiple times per frame
-		//context->VSSetShader(vertexShader.Get(), 0, 0);
-		//context->PSSetShader(pixelShader.Get(), 0, 0);
 	}
 
 	// Initialize ImGui itself & platform/renderer backends
@@ -102,21 +92,29 @@ void Game::Init()
 	ImGui_ImplDX11_Init(device.Get(), context.Get());
 	ImGui::StyleColorsDark();
 
-	mat0 = make_shared<Material>(XMFLOAT4(1.0f, 0.8f, 0.6f, 1.0f), vertexShader, pixelShader);
-	mat1 = make_shared<Material>(XMFLOAT4(0.25f, 0.5f, 0.75f, 1.0f), vertexShader, pixelShader);
-	mat2 = make_shared<Material>(XMFLOAT4(0.20f, 0.20f, 0.70f, 1.0f), vertexShader, pixelShader);
+	mat0 = make_shared<Material>(XMFLOAT4(1.0f, 0.8f, 0.6f, 1.0f), vertexShader, customPS);
+	mat1 = make_shared<Material>(XMFLOAT4(0.25f, 0.5f, 0.75f, 1.0f), vertexShader, customPS);
+	mat2 = make_shared<Material>(XMFLOAT4(0.20f, 0.20f, 0.70f, 1.0f), vertexShader, customPS);
 
-	cams.push_back(make_shared<Camera>((float)windowWidth / windowHeight, XMFLOAT3(0, 0, -5), 70.0f));
-	cams.push_back(make_shared<Camera>((float)windowWidth / windowHeight, XMFLOAT3(0, 2, -1), 90.0f));
+	cams.push_back(make_shared<Camera>((float)windowWidth / windowHeight, XMFLOAT3(0, 0, -4), 70.0f));
+	cams.push_back(make_shared<Camera>((float)windowWidth / windowHeight, XMFLOAT3(0, 0, -4), 90.0f));
+	
 	
 	activeCam = 0;
 
 	entities[0] = Entity(mesh0, mat0);
 	entities[1] = Entity(mesh1, mat1);
 	entities[2] = Entity(mesh2, mat2);
-	entities[3] = Entity(mesh0, mat0);
-	entities[4] = Entity(mesh1, mat2);
 	entityCount = sizeof(entities) / sizeof(Entity);
+
+	for (int i = 0; i < entityCount; i++) {
+		entities[i].GetTransform()->SetScale(0.25,0.25,0.25);
+	}
+
+	entities[0].GetTransform()->SetPosition(-1, 0, 0);
+	entities[1].GetTransform()->SetPosition(0, 0, 0);
+	entities[2].GetTransform()->SetPosition(1, 0, 0);
+	
 
 	timer = 1.0f;
 	fps = 0.0f;
@@ -133,7 +131,8 @@ void Game::Init()
 void Game::LoadShaders()
 {
 	vertexShader = make_shared<SimpleVertexShader>(device, context, FixPath(L"VertexShader.cso").c_str());
-	pixelShader = make_shared<SimplePixelShader>(device, context, FixPath(L"PixelShader.cso").c_str());
+	//pixelShader = make_shared<SimplePixelShader>(device, context, FixPath(L"PixelShader.cso").c_str());
+	customPS = make_shared<SimplePixelShader>(device, context, FixPath(L"CustomPS.cso").c_str());
 }
 
 // --------------------------------------------------------
@@ -143,7 +142,7 @@ void Game::CreateGeometry()
 {
 	mesh0 = make_shared<Mesh>(FixPath(L"../../Assets/Models/sphere.obj").c_str(), device, context);
 	mesh1 = make_shared<Mesh>(FixPath(L"../../Assets/Models/cube.obj").c_str(), device, context);
-	mesh2 = make_shared<Mesh>(FixPath(L"../../Assets/Models/cylinder.obj").c_str(), device, context);	
+	mesh2 = make_shared<Mesh>(FixPath(L"../../Assets/Models/helix.obj").c_str(), device, context);
 }
 
 
@@ -167,19 +166,22 @@ void Game::OnResize()
 /// </summary>
 /// <param name="label">tree node name</param>
 /// <param name="object">object to showcase in tree node</param>
-void Node(const char* label, Entity* object)
+void Node(const char* label, Entity* object, float orientation[3])
 {
 	if (TreeNode(label))
 	{
 		float position[3] = { object->GetTransform()->GetPosition().x, object->GetTransform()->GetPosition().y, object->GetTransform()->GetPosition().z };
-		float orientation[4] = { object->GetTransform()->GetOrientation().x, object->GetTransform()->GetOrientation().y, object->GetTransform()->GetOrientation().z, object->GetTransform()->GetOrientation().w };
+		//static float orientation[3] = { 0.0f, 0.0f, 0.0f };
 		float scale[3] = { object->GetTransform()->GetScale().x, object->GetTransform()->GetScale().y, object->GetTransform()->GetScale().z };
 		DragFloat3("Position", position, 0.01f);
-		DragFloat4("Rotation (Radians)", orientation, 0.01f, -1, 1);
+		if (DragFloat3("Rotation (Radians)", orientation, 0.01f)) {
+			std::cout << "yea\n";
+			object->GetTransform()->SetOrientation(orientation[0], orientation[1], orientation[2]);
+		}
 		DragFloat3("Scale", scale, 0.01f);
 		TreePop();
 		object->GetTransform()->SetPosition(position[0], position[1], position[2]);
-		object->GetTransform()->SetOrientation(XMFLOAT4(orientation[0], orientation[1], orientation[2], orientation[3]));
+		//object->GetTransform()->SetOrientation(orientation[0], orientation[1], orientation[2]);
 		object->GetTransform()->SetScale(scale[0], scale[1], scale[2]);
 	}
 }
@@ -189,14 +191,10 @@ void Node(const char* label, Entity* object)
 // --------------------------------------------------------
 void Game::Update(float deltaTime, float totalTime)
 { 
-	entities[0].GetTransform()->MoveAbsolute(0.25f * deltaTime, 0, 0);
-	entities[1].GetTransform()->MoveAbsolute(0.0f, -0.25f * deltaTime, 0.0f);
-	entities[2].GetTransform()->Scale(0.0f, 0.25f * deltaTime, 0.0f);
-	entities[3].GetTransform()->Rotate(0, 0, 0.25f * deltaTime);
-	entities[4].GetTransform()->MoveAbsolute(0.25f * deltaTime, 0.0f, 0.0f);
-	entities[4].GetTransform()->Scale(0, 0.25f * deltaTime, 0.0f);
-	entities[4].GetTransform()->Rotate(0, 0, -0.25f * deltaTime);
-	
+	for (int i = 0; i < entityCount; i++)
+	{
+		entities[i].GetTransform()->Rotate(0,1 * deltaTime,0);
+	}
 	// The imgui stuff needs to be done first
 	// Feed fresh input data to ImGui
 	ImGuiIO& io = ImGui::GetIO();
@@ -239,20 +237,16 @@ void Game::Update(float deltaTime, float totalTime)
 	{
 		if (TreeNode("Scene Entities"))
 		{
-			Node("Object 0", &entities[0]);
-			Node("Object 1", &entities[1]);
-			Node("Object 2", &entities[2]);
-			Node("Object 3", &entities[3]); 
-			Node("Object 4", &entities[4]);
+			Node("Object 0", &entities[0], orientation0);
+			Node("Object 1", &entities[1], orientation1);
+			Node("Object 2", &entities[2], orientation2);
 			TreePop();
 		}
-
-
 	}
 
 	ImGui::End();
 	
-	for (int i = 0; i < 5; i++) {
+	for (int i = 0; i < entityCount; i++) {
 		entities[i].GetTransform()->UpdateMatrices();
 	}
 
@@ -282,10 +276,8 @@ void Game::Draw(float deltaTime, float totalTime)
 	// DRAW geometry
 	// - These steps are generally repeated for EACH object you draw
 	// - Other Direct3D calls will also be necessary to do more complex things
-	UINT stride = sizeof(Vertex);
-	UINT offset = 0;
 	{
-		for (int i = 0; i < 5; i++) {
+		for (int i = 0; i < entityCount; i++) {
 			// set shader before drawing entity since most likely each entity will want to be drawn via a different shader instead of the same global one
 			entities[i].GetMaterial()->GetVertexShader()->SetShader();
 			entities[i].GetMaterial()->GetPixelShader()->SetShader();

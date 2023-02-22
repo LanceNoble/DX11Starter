@@ -1,19 +1,14 @@
 #include "Transform.h"
 #include <iostream>
+
 using namespace DirectX;
 
-
-// Note: when using quaternions to calculate rotations, always normalize them, it's more efficient
-
-/// <summary>
-/// Set default values for the entity's transform
-/// </summary>
 Transform::Transform() {
 	position = XMFLOAT3(0.0f, 0.0f, 0.0f);
+	XMStoreFloat4(&orientation, XMQuaternionIdentity());
 	scale = XMFLOAT3(1.0f, 1.0f, 1.0f);
 	XMStoreFloat4x4(&world, XMMatrixIdentity());
 	XMStoreFloat4x4(&worldInverseTranspose, XMMatrixIdentity());
-	XMStoreFloat4(&orientation, XMQuaternionIdentity());
 }
 
 /// <summary>
@@ -30,15 +25,6 @@ void Transform::SetPosition(float x, float y, float z)
 }
 
 /// <summary>
-/// Set the position of the entity's transform
-/// </summary>
-/// <param name="position">The new position</param>
-void Transform::SetPosition(DirectX::XMFLOAT3 position)
-{
-	this->position = position;
-}
-
-/// <summary>
 /// Set the orientation of the entity's transform
 /// </summary>
 /// <param name="pitch">the pitch of the new position</param>
@@ -46,14 +32,7 @@ void Transform::SetPosition(DirectX::XMFLOAT3 position)
 /// <param name="roll">the roll of the new position</param>
 void Transform::SetOrientation(float pitch, float yaw, float roll)
 {
-	//XMVECTOR quat = XMQuaternionRotationRollPitchYaw(pitch, yaw, roll);
-	//quat = XMQuaternionNormalize(quat);
 	XMStoreFloat4(&orientation, XMQuaternionRotationRollPitchYaw(pitch, yaw, roll));
-	//XMVECTOR orientationCopy = XMLoadFloat4(&orientation);
-	//XMVECTOR rotQuat = XMQuaternionRotationRollPitchYaw(pitch, yaw, roll);
-	//orientationCopy = XMQuaternionMultiply(orientationCopy, rotQuat);
-	//XMStoreFloat4(&orientation, orientationCopy);
-
 }
 
 /// <summary>
@@ -62,9 +41,7 @@ void Transform::SetOrientation(float pitch, float yaw, float roll)
 /// <param name="orientation">The new orientation</param>
 void Transform::SetOrientation(DirectX::XMFLOAT4 orientation)
 {
-	//XMVECTOR orientationCopy = XMLoadFloat4(&orientation);
-	//orientationCopy = XMQuaternionNormalize(orientationCopy);
-	XMStoreFloat4(&orientation, XMLoadFloat4(&orientation));
+	XMStoreFloat4(&this->orientation, XMLoadFloat4(&orientation));
 }
 
 /// <summary>
@@ -78,15 +55,6 @@ void Transform::SetScale(float x, float y, float z)
 	scale.x = x;
 	scale.y = y;
 	scale.z = z;
-}
-
-/// <summary>
-/// Set the scale of the entity's transform
-/// </summary>
-/// <param name="scale">The new scale</param>
-void Transform::SetScale(DirectX::XMFLOAT3 scale)
-{
-	this->scale = scale;
 }
 
 /// <summary>
@@ -148,18 +116,6 @@ void Transform::MoveAbsolute(float x, float y, float z)
 }
 
 /// <summary>
-/// move the entity globally
-/// </summary>
-/// <param name="offset">how much to move the entity by</param>
-void Transform::MoveAbsolute(DirectX::XMFLOAT3 offset)
-{
-	XMVECTOR posCopy = XMLoadFloat3(&position);
-	XMVECTOR offCopy = XMLoadFloat3(&offset);
-	//posCopy = XMVectorAdd(posCopy, offCopy);
-	XMStoreFloat3(&position, XMVectorAdd(posCopy, offCopy));
-}
-
-/// <summary>
 /// move the entity based on its orientation
 /// </summary>
 /// <param name="x">how far to move in the x direction</param>
@@ -173,7 +129,6 @@ void Transform::MoveRelative(float x, float y, float z)
 	XMVECTOR eulersRotated = XMVector3Rotate(eulersCopy, quat);
 	XMVECTOR position = XMLoadFloat3(&this->position);
 	position = XMVectorAdd(eulersRotated, position);
-	//position += eulersRotated;
 	XMStoreFloat3(&this->position, position);
 }
 
@@ -192,18 +147,6 @@ void Transform::Rotate(float pitch, float yaw, float roll)
 }
 
 /// <summary>
-/// rotate entity
-/// </summary>
-/// <param name="rotation">how much to rotate the entity by</param>
-void Transform::Rotate(DirectX::XMFLOAT3 rotation)
-{
-	XMVECTOR orientationCopy = XMLoadFloat4(&orientation);
-	XMVECTOR rotQuat = XMLoadFloat3(&rotation);
-	//rotQuat = XMQuaternionRotationRollPitchYawFromVector(rotQuat);
-	XMStoreFloat4(&orientation, XMQuaternionMultiply(orientationCopy, rotQuat));
-}
-
-/// <summary>
 /// scale entity
 /// </summary>
 /// <param name="x">how much to scale the entity by in the x direction</param>
@@ -214,18 +157,6 @@ void Transform::Scale(float x, float y, float z)
 	scale.x += x;
 	scale.y += y;
 	scale.z += z;
-}
-
-/// <summary>
-/// scale entity
-/// </summary>
-/// <param name="scalar">how much to scale the entity by</param>
-void Transform::Scale(DirectX::XMFLOAT3 scalar)
-{
-	XMVECTOR scaleCopy = XMLoadFloat3(&scale);
-	XMVECTOR scalarCopy = XMLoadFloat3(&scalar);
-	scaleCopy = XMVectorAdd(scaleCopy, scalarCopy);
-	XMStoreFloat3(&position, scaleCopy);
 }
 
 /// <summary>
