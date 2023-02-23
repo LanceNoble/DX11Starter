@@ -4,6 +4,10 @@ cbuffer ExternalData : register(b0)
 	// declare variables that hold the external data (data sent in from c++)
 	// order at which they're declared matters (they define where in the buffer these variables will get their data)
 	float4 colorTint;
+	float3 cameraPosition;
+	float3 ambientColor;
+	float3 lightDirection;
+	float4 lightColor;
 }
 
 // Struct representing the data we expect to receive from earlier pipeline stages
@@ -18,10 +22,29 @@ struct VertexToPixel
 	//  |   Name          Semantic
 	//  |    |                |
 	//  v    v                v
-	float4 screenPosition	: SV_POSITION;
-	//float4 color			: COLOR;
+	float4 screenPosition	: SV_POSITION;	// XYZW position (System Value Position)
+	//float4 color			: COLOR;        // RGBA color
 	float2 uv : TEXCOORD;
+	float3 normal : NORMAL;
+	float3 worldPosition : POSITION;
 };
+
+float DiffuseBRDF(float3 normal, float3 dirToLight) {
+	return saturate(dot(normal,normalize(dirToLight)));
+}
+
+float SpecularBRDF(float3 normal, float3 lightDir, float3 viewVector) {
+	// get reflection of light bouncing off surface
+	float refl = reflect(lightDir, normal);
+	
+	//compare refl against view vec (do not want negative result), raising it to a very high power
+	// to ensure the falloff to zero is quick
+	float specular = saturate(dot(refl, viewVector));
+	specular = pow(specular, 256);
+	//specular = pow(specular, 128);
+	//specular = pow(specular, 10);
+	return specular;
+}
 
 // --------------------------------------------------------
 // The entry point (main method) for our pixel shader
@@ -34,5 +57,20 @@ struct VertexToPixel
 // --------------------------------------------------------
 float4 main(VertexToPixel input) : SV_TARGET
 {
-    return float4(sin(input.screenPosition.xy * 0.25), tan(input.uv * 30)) * colorTint;
+	// must re-normalize any interpolated vectors that were produced from rasterizer
+	input.normal = normalize(input.normal);
+
+	// must normalize for dot product operations
+	float3 viewVector = normalize(cameraPosition - input.worldPosition);
+
+	float3 totalLightColor = ambientColor;
+
+	//totalLightColor += DiffuseBRDF(input.normal, -lightDirection) * lightColor * colorTint;
+	totalLightColor += DiffuseBRDF(input.normal, -lightDirection) * lightColor;
+	totalLightColor += SpecularBRDF(input.normal, -lightDirection, viewVector) * lightColor;
+
+	//totalLightColor += DiffuseBRDF(input.normal, -lightDirection2) * light2Color * colorTint;
+	//totalLightColor += SpecularBRDF(input.normal, -lightDirection2, viewVector) * light2Color;
+
+	return float4(colorTint * totalLightColor, 1);
 }

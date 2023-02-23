@@ -30,8 +30,8 @@ struct VertexShaderInput
 	//  v    v                v
 	float3 localPosition	: POSITION;     // XYZ position
 	//float4 color			: COLOR;        // RGBA color
-	float3 normal : NORMAL;
 	float2 uv : TEXCOORD;
+	float3 normal : NORMAL;
 };
 
 // Struct representing the data we're sending down the pipeline
@@ -49,6 +49,8 @@ struct VertexToPixel
 	float4 screenPosition	: SV_POSITION;	// XYZW position (System Value Position)
 	//float4 color			: COLOR;        // RGBA color
 	float2 uv : TEXCOORD;
+	float3 normal : NORMAL;
+	float3 worldPosition : POSITION;
 };
 
 // --------------------------------------------------------
@@ -74,12 +76,17 @@ VertexToPixel main( VertexShaderInput input )
 	matrix wvp = mul(projMat, mul(viewMat, world));
 	//output.screenPosition = mul(world, float4(input.localPosition, 1.0f));
 	output.screenPosition = mul(wvp, float4(input.localPosition, 1.0f));
+	output.worldPosition = mul(world, float4(input.localPosition, 1.0f)).xyz;
 
 	// Pass the color through 
 	// - The values will be interpolated per-pixel by the rasterizer
 	// - We don't need to alter it here, but we do need to send it to the pixel shader
 	//output.color = colorTint;
 	output.uv = input.uv;
+
+	//this normal is in local space, not world space
+	// to go from local -> world, we need a world matrix
+	output.normal = normalize(mul((float3x3)world, input.normal));
 	// Whatever we return will make its way through the pipeline to the
 	// next programmable stage we're using (the pixel shader for now)
 	return output;

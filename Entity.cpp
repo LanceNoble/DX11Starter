@@ -71,6 +71,10 @@ void Entity::Draw(Microsoft::WRL::ComPtr<ID3D11Device> device, Microsoft::WRL::C
 
 	shared_ptr<SimplePixelShader> ps = mat->GetPixelShader();
 	ps->SetFloat4("colorTint", mat->GetColorTint());
+	ps->SetFloat3("cameraPosition", cam->transform.GetPosition());
+	ps->SetFloat4("ambientColor", XMFLOAT4(0.1f,0.1f,0.25f,1.0f));
+	ps->SetFloat3("lightDirection", XMFLOAT3(0.0f,0.0f,1.0f));
+	ps->SetFloat4("lightColor", XMFLOAT4(1.0f,1.0f,1.0f,1.0f));
 	ps->CopyAllBufferData();
 	mesh->Draw();
 }
