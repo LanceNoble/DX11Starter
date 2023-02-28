@@ -66,7 +66,7 @@ float4 main(VertexToPixel input) : SV_TARGET
 	
 	// must normalize for dot product operations
 	//float3 viewVector = normalize(cameraPosition - input.worldPosition);
-	//
+	
 	//float3 totalLightColor = ambience;
 	//
 	//totalLightColor += DiffuseBRDF(input.normal, -lightDirection) * lightColor;
