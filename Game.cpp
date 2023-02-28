@@ -68,11 +68,24 @@ Game::~Game()
 // --------------------------------------------------------
 void Game::Init()
 {
+	//directionalLight1 = CreateLight(LIGHT_TYPE_DIRECTIONAL, XMFLOAT3(1.0f, 0.0f, 0.0f));
 	directionalLight1 = {};
 	directionalLight1.Type = LIGHT_TYPE_DIRECTIONAL;
 	directionalLight1.Direction = XMFLOAT3(1.0f, 0.0f, 0.0f);
 	directionalLight1.Color = XMFLOAT3(1.0, 0.0f, 0.0f);
 	directionalLight1.Intensity = 1.0f;
+
+	directionalLight2 = {};
+	directionalLight2.Type = LIGHT_TYPE_DIRECTIONAL;
+	directionalLight2.Direction = XMFLOAT3(0.0f, -1.0f, 0.0f);
+	directionalLight2.Color = XMFLOAT3(0.91f, 0.88f, 0.79f);
+	directionalLight2.Intensity = 1.0f;
+
+	directionalLight3 = {};
+	directionalLight3.Type = LIGHT_TYPE_DIRECTIONAL;
+	directionalLight3.Direction = XMFLOAT3(-1.0f, 0.0f, 0.0f);
+	directionalLight3.Color = XMFLOAT3(0.32f, 0.34f, 0.34f);
+	directionalLight3.Intensity = 1.0f;
 
 	// Helper methods for loading shaders, creating some basic
 	// geometry to draw and some simple camera matrices.
@@ -100,6 +113,9 @@ void Game::Init()
 
 	XMFLOAT3 ambientColor = XMFLOAT3(0.1f, 0.1f, 0.25f);
 	XMFLOAT4 colorTint = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+	// roughness should not be 1, leads to weird visuals
+	// install direct directxtk_desktop_win10 for this DX11Starter project
+	// if this is a new machine
 	mat0 = make_shared<Material>(colorTint, vs, ps, 0.25f, ambientColor);
 	mat1 = make_shared<Material>(colorTint, vs, ps, 0.5f, ambientColor);
 	mat2 = make_shared<Material>(colorTint, vs, ps, 0.75f, ambientColor);
@@ -169,6 +185,19 @@ void Game::CreateGeometry()
 	mesh5 = make_shared<Mesh>(FixPath(L"../../Assets/Models/sphere.obj").c_str(), device, context);
 	mesh6 = make_shared<Mesh>(FixPath(L"../../Assets/Models/torus.obj").c_str(), device, context);
 
+}
+
+Light Game::CreateLight(int type, XMFLOAT3 dir, float range, XMFLOAT3 pos, float intensity, XMFLOAT3 color, float falloff)
+{
+	Light light = {};
+	light.Type = type;
+	light.Direction = dir;
+	light.Range = range;
+	light.Position = pos;
+	light.Intensity = intensity;
+	light.Color = color;
+	light.SpotFalloff = falloff;
+	return light;
 }
 
 
