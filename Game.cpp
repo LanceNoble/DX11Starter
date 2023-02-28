@@ -68,6 +68,12 @@ Game::~Game()
 // --------------------------------------------------------
 void Game::Init()
 {
+	directionalLight1 = {};
+	directionalLight1.Type = LIGHT_TYPE_DIRECTIONAL;
+	directionalLight1.Direction = XMFLOAT3(1.0f, 0.0f, 0.0f);
+	directionalLight1.Color = XMFLOAT3(1.0, 0.0f, 0.0f);
+	directionalLight1.Intensity = 1.0f;
+
 	// Helper methods for loading shaders, creating some basic
 	// geometry to draw and some simple camera matrices.
 	//  - You'll be expanding and/or replacing these later
@@ -92,9 +98,11 @@ void Game::Init()
 	ImGui_ImplDX11_Init(device.Get(), context.Get());
 	ImGui::StyleColorsDark();
 
-	mat0 = make_shared<Material>(XMFLOAT4(1.0f, 0.8f, 0.6f, 1.0f), vertexShader, customPS);
-	mat1 = make_shared<Material>(XMFLOAT4(0.25f, 0.5f, 0.75f, 1.0f), vertexShader, customPS);
-	mat2 = make_shared<Material>(XMFLOAT4(0.20f, 0.20f, 0.70f, 1.0f), vertexShader, customPS);
+	XMFLOAT3 ambientColor = XMFLOAT3(0.1f, 0.1f, 0.25f);
+	XMFLOAT4 colorTint = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+	mat0 = make_shared<Material>(colorTint, vs, ps, 0.0f, ambientColor);
+	mat1 = make_shared<Material>(colorTint, vs, ps, 0.5f, ambientColor);
+	mat2 = make_shared<Material>(colorTint, vs, ps, 1.0f, ambientColor);
 
 	cams.push_back(make_shared<Camera>((float)windowWidth / windowHeight, XMFLOAT3(0, 0, -4), 70.0f));
 	cams.push_back(make_shared<Camera>((float)windowWidth / windowHeight, XMFLOAT3(0, 0, -4), 90.0f));
@@ -105,19 +113,29 @@ void Game::Init()
 	entities[0] = Entity(mesh0, mat0);
 	entities[1] = Entity(mesh1, mat1);
 	entities[2] = Entity(mesh2, mat2);
+	entities[3] = Entity(mesh3, mat0);
+	entities[4] = Entity(mesh4, mat1);
+	entities[5] = Entity(mesh5, mat2);
+	entities[6] = Entity(mesh6, mat0);
 	entityCount = sizeof(entities) / sizeof(Entity);
 
 	for (int i = 0; i < entityCount; i++) {
 		entities[i].GetTransform()->SetScale(0.25,0.25,0.25);
 	}
 
-	entities[0].GetTransform()->SetPosition(-1, 0, 0);
-	entities[1].GetTransform()->SetPosition(0, 0, 0);
-	entities[2].GetTransform()->SetPosition(1, 0, 0);
+	entities[0].GetTransform()->SetPosition(-3, 0, 0);
+	entities[1].GetTransform()->SetPosition(-2, 0, 0);
+	entities[2].GetTransform()->SetPosition(-1, 0, 0);
+	entities[3].GetTransform()->SetPosition(0, 0, 0);
+	entities[4].GetTransform()->SetPosition(1, 0, 0);
+	entities[5].GetTransform()->SetPosition(2, 0, 0);
+	entities[6].GetTransform()->SetPosition(3, 0, 0);
+	
 	
 
 	timer = 1.0f;
 	fps = 0.0f;
+	
 }
 
 // --------------------------------------------------------
@@ -130,9 +148,12 @@ void Game::Init()
 // --------------------------------------------------------
 void Game::LoadShaders()
 {
-	vertexShader = make_shared<SimpleVertexShader>(device, context, FixPath(L"VertexShader.cso").c_str());
-	//pixelShader = make_shared<SimplePixelShader>(device, context, FixPath(L"PixelShader.cso").c_str());
-	customPS = make_shared<SimplePixelShader>(device, context, FixPath(L"CustomPS.cso").c_str());
+	vs = make_shared<SimpleVertexShader>(device, context, FixPath(L"VertexShader.cso").c_str());
+	ps = make_shared<SimplePixelShader>(device, context, FixPath(L"PixelShader.cso").c_str());
+	ps->SetData(
+		"directionalLight1", // name of light variable
+		&directionalLight1, // address of data
+		sizeof(Light)); // size of data
 }
 
 // --------------------------------------------------------
@@ -140,9 +161,14 @@ void Game::LoadShaders()
 // --------------------------------------------------------
 void Game::CreateGeometry()
 {
-	mesh0 = make_shared<Mesh>(FixPath(L"../../Assets/Models/sphere.obj").c_str(), device, context);
-	mesh1 = make_shared<Mesh>(FixPath(L"../../Assets/Models/cube.obj").c_str(), device, context);
+	mesh0 = make_shared<Mesh>(FixPath(L"../../Assets/Models/cube.obj").c_str(), device, context);
+	mesh1 = make_shared<Mesh>(FixPath(L"../../Assets/Models/cylinder.obj").c_str(), device, context);
 	mesh2 = make_shared<Mesh>(FixPath(L"../../Assets/Models/helix.obj").c_str(), device, context);
+	mesh3 = make_shared<Mesh>(FixPath(L"../../Assets/Models/quad.obj").c_str(), device, context);
+	mesh4 = make_shared<Mesh>(FixPath(L"../../Assets/Models/quad_double_sided.obj").c_str(), device, context);
+	mesh5 = make_shared<Mesh>(FixPath(L"../../Assets/Models/sphere.obj").c_str(), device, context);
+	mesh6 = make_shared<Mesh>(FixPath(L"../../Assets/Models/torus.obj").c_str(), device, context);
+
 }
 
 
@@ -193,7 +219,7 @@ void Game::Update(float deltaTime, float totalTime)
 { 
 	for (int i = 0; i < entityCount; i++)
 	{
-		entities[i].GetTransform()->Rotate(0,1 * deltaTime,0);
+		//entities[i].GetTransform()->Rotate(0,1 * deltaTime,0);
 	}
 	// The imgui stuff needs to be done first
 	// Feed fresh input data to ImGui

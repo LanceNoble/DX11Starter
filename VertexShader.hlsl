@@ -1,3 +1,5 @@
+#include "Lighting.hlsli"
+
 // define constant buffer at the top
 // important that every line of code is typed correctly and in this order
 
@@ -14,44 +16,11 @@ cbuffer ExternalData : register(b0)
 	matrix world;
 	matrix viewMat;
 	matrix projMat;
+    matrix worldInvTranspose;
+
 }
 
-// Struct representing a single vertex worth of data
-// - This should match the vertex definition in our C++ code
-// - By "match", I mean the size, order and number of members
-// - The name of the struct itself is unimportant, but should be descriptive
-// - Each variable must have a semantic, which defines its usage
-struct VertexShaderInput
-{ 
-	// Data type
-	//  |
-	//  |   Name          Semantic
-	//  |    |                |
-	//  v    v                v
-	float3 localPosition	: POSITION;     // XYZ position
-	//float4 color			: COLOR;        // RGBA color
-	float2 uv : TEXCOORD;
-	float3 normal : NORMAL;
-};
 
-// Struct representing the data we're sending down the pipeline
-// - Should match our pixel shader's input (hence the name: Vertex to Pixel)
-// - At a minimum, we need a piece of data defined tagged as SV_POSITION
-// - The name of the struct itself is unimportant, but should be descriptive
-// - Each variable must have a semantic, which defines its usage
-struct VertexToPixel
-{
-	// Data type
-	//  |
-	//  |   Name          Semantic
-	//  |    |                |
-	//  v    v                v
-	float4 screenPosition	: SV_POSITION;	// XYZW position (System Value Position)
-	//float4 color			: COLOR;        // RGBA color
-	float2 uv : TEXCOORD;
-	float3 normal : NORMAL;
-	float3 worldPosition : POSITION;
-};
 
 // --------------------------------------------------------
 // The entry point (main method) for our vertex shader
@@ -76,7 +45,7 @@ VertexToPixel main( VertexShaderInput input )
 	matrix wvp = mul(projMat, mul(viewMat, world));
 	//output.screenPosition = mul(world, float4(input.localPosition, 1.0f));
 	output.screenPosition = mul(wvp, float4(input.localPosition, 1.0f));
-	output.worldPosition = mul(world, float4(input.localPosition, 1.0f)).xyz;
+	//output.worldPosition = mul(world, float4(input.localPosition, 1.0f)).xyz;
 
 	// Pass the color through 
 	// - The values will be interpolated per-pixel by the rasterizer
@@ -86,7 +55,14 @@ VertexToPixel main( VertexShaderInput input )
 
 	//this normal is in local space, not world space
 	// to go from local -> world, we need a world matrix
-	output.normal = normalize(mul((float3x3)world, input.normal));
+	output.normal = mul((float3x3)world, input.normal);
+	
+	// to account for non-uniform scales, use a worldInvTranspose matrix
+    //output.normal = mul((float3x3) worldInvTranspose, input.normal);
+	
+	// calculate world position of pixel, and only grab the first three components
+    output.worldPosition = mul(world, float4(input.localPosition, 1)).xyz;
+	
 	// Whatever we return will make its way through the pipeline to the
 	// next programmable stage we're using (the pixel shader for now)
 	return output;

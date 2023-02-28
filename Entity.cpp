@@ -67,14 +67,16 @@ void Entity::Draw(Microsoft::WRL::ComPtr<ID3D11Device> device, Microsoft::WRL::C
 	vs->SetMatrix4x4("world", transform.GetWorldMatrix());
 	vs->SetMatrix4x4("viewMat", cam->GetViewMat());
 	vs->SetMatrix4x4("projMat", cam->GetProjMat());
+	vs->SetMatrix4x4("worldInvTranspose", transform.GetWorldInverseTransposeMatrix());
 	vs->CopyAllBufferData();
 
 	shared_ptr<SimplePixelShader> ps = mat->GetPixelShader();
 	ps->SetFloat4("colorTint", mat->GetColorTint());
-	ps->SetFloat3("cameraPosition", cam->transform.GetPosition());
-	ps->SetFloat4("ambientColor", XMFLOAT4(0.1f,0.1f,0.25f,1.0f));
-	ps->SetFloat3("lightDirection", XMFLOAT3(0.0f,0.0f,1.0f));
-	ps->SetFloat4("lightColor", XMFLOAT4(1.0f,1.0f,1.0f,1.0f));
+	//ps->SetFloat3("cameraPosition", cam->transform.GetPosition());
+	//ps->SetFloat3("lightDirection", XMFLOAT3(0.0f,0.0f,1.0f));
+	//ps->SetFloat4("lightColor", XMFLOAT4(1.0f,1.0f,1.0f,1.0f));
+	ps->SetFloat("roughness", mat->GetRoughness());
+	ps->SetFloat3("ambience", mat->GetAmbience());
 	ps->CopyAllBufferData();
 	mesh->Draw();
 }
