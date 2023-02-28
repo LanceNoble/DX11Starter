@@ -22,6 +22,7 @@ class Game: public DXCore {
 	private:
 		void LoadShaders(); 
 		void CreateGeometry();
+		Light CreateLight(int = 0, DirectX::XMFLOAT3 = DirectX::XMFLOAT3(0.0f,0.0f,0.0f), float = 0, DirectX::XMFLOAT3 = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f), float = 0, DirectX::XMFLOAT3 = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f), float = 0);
 		std::shared_ptr<SimpleVertexShader> vs;
 		std::shared_ptr<SimplePixelShader> pixelShader;
 		std::shared_ptr<SimplePixelShader> ps;
@@ -45,4 +46,6 @@ class Game: public DXCore {
 		float timer = 0;
 		float fps = 0;
 		Light directionalLight1;
+		Light directionalLight2;
+		Light directionalLight3;
 };
