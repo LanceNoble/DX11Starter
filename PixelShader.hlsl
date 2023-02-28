@@ -6,7 +6,7 @@ cbuffer ExternalData : register(b0)
 	// declare variables that hold the external data (data sent in from c++)
 	// order at which they're declared matters (they define where in the buffer these variables will get their data)
 	float4 colorTint;
-	//float3 cameraPosition;
+	float3 cameraPosition;
 	//float3 lightDirection;
 	//float4 lightColor;
     float roughness;
@@ -54,9 +54,18 @@ float4 main(VertexToPixel input) : SV_TARGET
     float3 dirToLight = normalize(-directionalLight1.Direction);
 	// Calculate diffuse amount for light via N dot L diffuse lighting equation
     float diffuseAmount = DiffuseBRDF(input.normal, dirToLight);
+	
+	float specExponent = (1.0f - roughness) * MAX_SPECULAR_EXPONENT;
+	float3 viewVector = normalize(cameraPosition - input.worldPosition);
+	float3 reflectionVector = reflect(directionalLight1.Direction, input.normal);
+	float spec = pow(saturate(dot(reflectionVector, viewVector)), specExponent);
+    //float3 light = colorTint * (diffuseAmount + spec); // tint specular
+    //float3 light = colorTint * diffuseAmount + spec; // don't tint specular
+	
 	// Calculate final pixel color
 		// based on surface's color, light's diffusion amount, light's color, and ambient color
-    float3 finalPixelColor = (diffuseAmount * directionalLight1.Color * colorTint) + (ambience * colorTint);
+    //float3 finalPixelColor = (diffuseAmount * directionalLight1.Color * colorTint) + (ambience * colorTint);
+    float3 finalPixelColor = (directionalLight1.Color * colorTint * diffuseAmount + spec) + (ambience * colorTint);
 	
     return float4(finalPixelColor, 1);
     //return float4(input.normal, 1);

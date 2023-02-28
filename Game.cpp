@@ -100,9 +100,9 @@ void Game::Init()
 
 	XMFLOAT3 ambientColor = XMFLOAT3(0.1f, 0.1f, 0.25f);
 	XMFLOAT4 colorTint = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
-	mat0 = make_shared<Material>(colorTint, vs, ps, 0.0f, ambientColor);
+	mat0 = make_shared<Material>(colorTint, vs, ps, 0.25f, ambientColor);
 	mat1 = make_shared<Material>(colorTint, vs, ps, 0.5f, ambientColor);
-	mat2 = make_shared<Material>(colorTint, vs, ps, 1.0f, ambientColor);
+	mat2 = make_shared<Material>(colorTint, vs, ps, 0.75f, ambientColor);
 
 	cams.push_back(make_shared<Camera>((float)windowWidth / windowHeight, XMFLOAT3(0, 0, -4), 70.0f));
 	cams.push_back(make_shared<Camera>((float)windowWidth / windowHeight, XMFLOAT3(0, 0, -4), 90.0f));

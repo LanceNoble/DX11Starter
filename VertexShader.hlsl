@@ -55,10 +55,10 @@ VertexToPixel main( VertexShaderInput input )
 
 	//this normal is in local space, not world space
 	// to go from local -> world, we need a world matrix
-	output.normal = mul((float3x3)world, input.normal);
+	//output.normal = mul((float3x3)world, input.normal);
 	
 	// to account for non-uniform scales, use a worldInvTranspose matrix
-    //output.normal = mul((float3x3) worldInvTranspose, input.normal);
+    output.normal = mul((float3x3) worldInvTranspose, input.normal);
 	
 	// calculate world position of pixel, and only grab the first three components
     output.worldPosition = mul(world, float4(input.localPosition, 1)).xyz;
