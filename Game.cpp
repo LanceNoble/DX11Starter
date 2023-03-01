@@ -39,6 +39,7 @@ Game::Game(HINSTANCE hInstance)
 	CreateConsoleWindow(500, 120, 32, 120);
 	printf("Console window created successfully.  Feel free to printf() here.\n");
 #endif
+
 }						 
 
 // -----------------------Entity(triangle1);---------------------------------
@@ -68,21 +69,6 @@ Game::~Game()
 // --------------------------------------------------------
 void Game::Init()
 {
-	directionalLight1 = MakeDir(1.0f, XMFLOAT3(1.0, 0.0f, 0.0f), XMFLOAT3(1.0f, 0.0f, 0.0f));
-	//dirLight2 = MakeDir(1.0f, XMFLOAT3(0.91f, 0.88f, 0.79f), XMFLOAT3(0.0f, -1.0f, 0.0f));
-	//dirLight3 = MakeDir(1.0f, XMFLOAT3(0.32f, 0.34f, 0.34f), XMFLOAT3(-1.0f, 0.0f, 0.0f));
-	dirLight2 = MakeDir(1.0f, XMFLOAT3(0.0f, 1.0f, 0.0f), XMFLOAT3(0.0f, -1.0f, 0.0f));
-	dirLight3 = MakeDir(1.0f, XMFLOAT3(0.0f, 0.0f, 1.0f), XMFLOAT3(-1.0f, 0.0f, 0.0f));
-
-	point0 = MakePoint(1.0f, XMFLOAT3(1.0f,1.0f,1.0f), 3.0f, XMFLOAT3(-1.0f, 0.0f, 0.0f));
-	point1 = MakePoint(1.0f, XMFLOAT3(1.0f, 1.0f, 1.0f), 3.0f, XMFLOAT3(2.0f, 1.0f, 0.0f));
-
-	// Helper methods for loading shaders, creating some basic
-	// geometry to draw and some simple camera matrices.
-	//  - You'll be expanding and/or replacing these later
-	LoadShaders();
-	CreateGeometry();
-	
 	// Set initial graphics API state
 	//  - These settings persist until we change them
 	//  - Some of these, like the primitive topology & input layout, probably won't change
@@ -101,47 +87,57 @@ void Game::Init()
 	ImGui_ImplDX11_Init(device.Get(), context.Get());
 	ImGui::StyleColorsDark();
 
-	XMFLOAT3 ambientColor = XMFLOAT3(0.1f, 0.1f, 0.25f);
-	XMFLOAT4 colorTint = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
-	//XMFLOAT4 colorTint = XMFLOAT4(0.5f, 0.5f, 0.5f, 1.0f);
-	// roughness should not be 1, leads to weird visuals
-	// install direct directxtk_desktop_win10 for this DX11Starter project
-	// if this is a new machine
-	mat0 = make_shared<Material>(colorTint, vs, ps, 0.25f, ambientColor);
-	mat1 = make_shared<Material>(colorTint, vs, ps, 0.5f, ambientColor);
-	mat2 = make_shared<Material>(colorTint, vs, ps, 0.75f, ambientColor);
-
-	cams.push_back(make_shared<Camera>((float)windowWidth / windowHeight, XMFLOAT3(0, 1, -5), 70.0f));
-	cams.push_back(make_shared<Camera>((float)windowWidth / windowHeight, XMFLOAT3(0, 0, -4), 90.0f));
-	
-	
+	meshCount = sizeof(meshes) / sizeof(Mesh);
+	matCount = sizeof(mats) / sizeof(Material);
+	entCount = sizeof(ents) / sizeof(Entity);
 	activeCam = 0;
 
-	entities[0] = Entity(mesh0, mat0);
-	entities[1] = Entity(mesh1, mat1);
-	entities[2] = Entity(mesh2, mat2);
-	entities[3] = Entity(mesh3, mat0);
-	entities[4] = Entity(mesh4, mat1);
-	entities[5] = Entity(mesh5, mat2);
-	entities[6] = Entity(mesh6, mat0);
-	entityCount = sizeof(entities) / sizeof(Entity);
+	// Make sure to initialize the lights before loading the shaders
+	dir0 = MakeDir(1.0f, XMFLOAT3(0.0, 0.0f, 1.0f), XMFLOAT3(1.0f, 0.0f, 0.0f));
+	dir1 = MakeDir(1.0f, XMFLOAT3(0.91f, 0.88f, 0.79f), XMFLOAT3(0.0f, -1.0f, 0.0f));
+	dir2 = MakeDir(1.0f, XMFLOAT3(0.32f, 0.34f, 0.34f), XMFLOAT3(-1.0f, 0.0f, 0.0f));
+	point0 = MakePoint(1.0f, XMFLOAT3(1.0f, 1.0f, 1.0f), 3.0f, XMFLOAT3(-1.0f, 0.0f, 0.0f));
+	point1 = MakePoint(1.0f, XMFLOAT3(1.0f, 1.0f, 1.0f), 3.0f, XMFLOAT3(2.0f, 1.0f, 0.0f));
 
-	for (int i = 0; i < entityCount; i++) {
-		entities[i].GetTransform()->SetScale(0.25,0.25,0.25);
+	// Helper methods for loading shaders, creating some basic
+	// geometry to draw and some simple camera matrices.
+	//  - You'll be expanding and/or replacing these later
+	LoadShaders();
+	CreateGeometry();
+
+	XMFLOAT3 ambientColor = XMFLOAT3(0.1f, 0.1f, 0.25f);
+	mats[0] = make_shared<Material>(XMFLOAT4(0.44f, 0.31f, 0.22f, 1.0f), vs, ps, 0.5f, ambientColor);
+	mats[1] = make_shared<Material>(XMFLOAT4(0.5f, 0.5f, 0.5f, 1.0f), vs, ps, 0.99f, ambientColor);
+	mats[2] = make_shared<Material>(XMFLOAT4(1.0f, 0.84f, 0.0f, 1.0f), vs, ps, 0.0f, ambientColor);
+
+	ents[0] = Entity(meshes[0], mats[0]);
+	ents[1] = Entity(meshes[0], mats[1]);
+	ents[2] = Entity(meshes[0], mats[2]);
+	ents[3] = Entity(meshes[1], mats[0]);
+	ents[4] = Entity(meshes[1], mats[1]);
+	ents[5] = Entity(meshes[1], mats[2]);
+	ents[6] = Entity(meshes[2], mats[0]);
+	ents[7] = Entity(meshes[2], mats[1]);
+	ents[8] = Entity(meshes[2], mats[2]);
+	
+
+	for (int i = 0; i < entCount; i++) {
+		ents[i].GetTransform()->SetScale(0.25, 0.25, 0.25);
 	}
 
-	entities[0].GetTransform()->SetPosition(-3, 0, 0);
-	entities[1].GetTransform()->SetPosition(-2, 0, 0);
-	entities[2].GetTransform()->SetPosition(-1, 0, 0);
-	entities[3].GetTransform()->SetPosition(0, 0, 0);
-	entities[4].GetTransform()->SetPosition(1, 0, 0);
-	entities[5].GetTransform()->SetPosition(2, 0, 0);
-	entities[6].GetTransform()->SetPosition(3, 0, 0);
-	
+	ents[0].GetTransform()->SetPosition(-4, 0, 0);
+	ents[1].GetTransform()->SetPosition(-3, 0, 0);
+	ents[2].GetTransform()->SetPosition(-2, 0, 0);
+	ents[3].GetTransform()->SetPosition(-1, 0, 0);
+	ents[4].GetTransform()->SetPosition(0, 0, 0);
+	ents[5].GetTransform()->SetPosition(1, 0, 0);
+	ents[6].GetTransform()->SetPosition(2, 0, 0);
+	ents[7].GetTransform()->SetPosition(3, 0, 0);
+	ents[8].GetTransform()->SetPosition(4, 0, 0);
 
-	timer = 1.0f;
-	fps = 0.0f;
-	
+	cams.push_back(make_shared<Camera>((float)windowWidth / windowHeight, XMFLOAT3(0, 1, -6), 70.0f));
+	cams.push_back(make_shared<Camera>((float)windowWidth / windowHeight, XMFLOAT3(0, 0, -4), 90.0f));
+
 }
 
 // --------------------------------------------------------
@@ -157,12 +153,9 @@ void Game::LoadShaders()
 	vs = make_shared<SimpleVertexShader>(device, context, FixPath(L"VertexShader.cso").c_str());
 	ps = make_shared<SimplePixelShader>(device, context, FixPath(L"PixelShader.cso").c_str());
 	unsigned int lightSize = sizeof(Light);
-	ps->SetData(
-		"directionalLight1", // name of light variable
-		&directionalLight1, // address of data
-		lightSize); // size of data
-	ps->SetData("dirLight2",&dirLight2,lightSize);
-	ps->SetData("dirLight3",&dirLight3,lightSize);
+	ps->SetData("dir0", &dir0, lightSize);
+	ps->SetData("dir2", &dir1, lightSize);
+	ps->SetData("dir3", &dir2, lightSize);
 	ps->SetData("point0", &point0, lightSize);
 	ps->SetData("point1", &point1, lightSize);
 }
@@ -172,14 +165,9 @@ void Game::LoadShaders()
 // --------------------------------------------------------
 void Game::CreateGeometry()
 {
-	mesh0 = make_shared<Mesh>(FixPath(L"../../Assets/Models/cube.obj").c_str(), device, context);
-	mesh1 = make_shared<Mesh>(FixPath(L"../../Assets/Models/cylinder.obj").c_str(), device, context);
-	mesh2 = make_shared<Mesh>(FixPath(L"../../Assets/Models/helix.obj").c_str(), device, context);
-	mesh3 = make_shared<Mesh>(FixPath(L"../../Assets/Models/sphere.obj").c_str(), device, context);
-	mesh4 = make_shared<Mesh>(FixPath(L"../../Assets/Models/torus.obj").c_str(), device, context);
-	mesh5 = make_shared<Mesh>(FixPath(L"../../Assets/Models/quad.obj").c_str(), device, context);
-	mesh6 = make_shared<Mesh>(FixPath(L"../../Assets/Models/quad_double_sided.obj").c_str(), device, context);
-
+	meshes[0] = make_shared<Mesh>(FixPath(L"../../Assets/Models/cube.obj").c_str(), device, context);
+	meshes[1] = make_shared<Mesh>(FixPath(L"../../Assets/Models/helix.obj").c_str(), device, context);
+	meshes[2] = make_shared<Mesh>(FixPath(L"../../Assets/Models/torus.obj").c_str(), device, context);
 }
 
 Light Game::MakeDir(float intensity, DirectX::XMFLOAT3 color, DirectX::XMFLOAT3 dir)
@@ -229,23 +217,47 @@ void Game::OnResize()
 /// </summary>
 /// <param name="label">tree node name</param>
 /// <param name="object">object to showcase in tree node</param>
-void Node(const char* label, Entity* object, float orientation[3])
+void Game::Node(const char* label, Entity* object)
 {
 	if (TreeNode(label))
 	{
 		float position[3] = { object->GetTransform()->GetPosition().x, object->GetTransform()->GetPosition().y, object->GetTransform()->GetPosition().z };
-		//static float orientation[3] = { 0.0f, 0.0f, 0.0f };
 		float scale[3] = { object->GetTransform()->GetScale().x, object->GetTransform()->GetScale().y, object->GetTransform()->GetScale().z };
-		DragFloat3("Position", position, 0.01f);
-		if (DragFloat3("Rotation (Radians)", orientation, 0.01f)) {
-			std::cout << "yea\n";
-			object->GetTransform()->SetOrientation(orientation[0], orientation[1], orientation[2]);
+		if (DragFloat3("Position", position, 0.01f)) {
+			playerControlled = true;
+			object->GetTransform()->SetPosition(position[0], position[1], position[2]);
 		}
-		DragFloat3("Scale", scale, 0.01f);
+		if (DragFloat3("Scale", scale, 0.01f)) {
+			playerControlled = true;
+			object->GetTransform()->SetScale(scale[0], scale[1], scale[2]);
+		}
 		TreePop();
-		object->GetTransform()->SetPosition(position[0], position[1], position[2]);
-		//object->GetTransform()->SetOrientation(orientation[0], orientation[1], orientation[2]);
-		object->GetTransform()->SetScale(scale[0], scale[1], scale[2]);
+	}
+}
+
+// Helper function for creating imgui controls for lights
+void Game::LightNode(const char* label, Light* light) {
+	if (TreeNode(label)) {
+		float direction[3] = { light->Direction.x, light->Direction.y, light->Direction.z };
+		float range = light->Range;
+		float position[3] = { light->Position.x, light->Position.y, light->Position.z };
+		float intensity = light->Intensity;
+		float color[3] = { light->Color.x, light->Color.y, light->Color.z };
+		float falloff = light->SpotFalloff;
+		Text("Type: %f", light->Type);
+		DragFloat3("Direction", direction, 0.01f);
+		DragFloat("Range", &range, 0.01f, 0.0f);
+		DragFloat3("Position", position, 0.01f);
+		DragFloat("Intensity", &intensity, 0.01f, 0.0f, 1.0f);
+		DragFloat3("Color", color, 0.01f, 0.0f, 1.0f);
+		DragFloat("Falloff", &falloff, 0.01f, 0.0f);
+		light->Direction = XMFLOAT3(direction[0], direction[1], direction[2]);
+		light->Range = range;
+		light->Position = XMFLOAT3(position[0], position[1], position[2]);
+		light->Intensity = intensity;
+		light->Color = XMFLOAT3(color[0], color[1], color[2]);
+		light->SpotFalloff = falloff;
+		TreePop();
 	}
 }
 
@@ -254,9 +266,9 @@ void Node(const char* label, Entity* object, float orientation[3])
 // --------------------------------------------------------
 void Game::Update(float deltaTime, float totalTime)
 { 
-	for (int i = 0; i < entityCount; i++)
+	for (int i = 0; i < entCount; i++)
 	{
-		entities[i].GetTransform()->Rotate(1 * deltaTime,1 * deltaTime, 1 * deltaTime);
+		ents[i].GetTransform()->Rotate(1 * deltaTime,1 * deltaTime, 1 * deltaTime);
 	}
 	// The imgui stuff needs to be done first
 	// Feed fresh input data to ImGui
@@ -277,19 +289,12 @@ void Game::Update(float deltaTime, float totalTime)
 
 	// Show the demo window
 	ImGui::ShowDemoWindow();
-
 	// imgui UI code happens after imgui frame setup
 
 	// I had to add two new fields to the Game class for this to work: timer and fps
 	// The timer and fps helps to control the ImGui::GetIO().Framerate
 	// So the fps gets updated less frequently and we don't get a bunch of flashing new number updates every 0.00001 seconds
 	ImGui::Begin("Basic Scene Info");
-	timer -= ImGui::GetIO().DeltaTime;
-	if (timer <= 0.0f) {
-		fps = ImGui::GetIO().Framerate;
-		timer = 1.0f;
-	}
-	ImGui::Text("Framerate: %f", fps);
 	ImGui::Text("Window: %f x %f", ImGui::GetIO().DisplaySize.x, ImGui::GetIO().DisplaySize.y);
 	ImGui::DragInt("Active Cam", &activeCam, 1.0f, 0, 1);
 	ImGui::Text("Cam Pos: %f, %f, %f", cams[activeCam]->transform.GetPosition().x, cams[activeCam]->transform.GetPosition().y, cams[activeCam]->transform.GetPosition().z);
@@ -300,17 +305,39 @@ void Game::Update(float deltaTime, float totalTime)
 	{
 		if (TreeNode("Scene Entities"))
 		{
-			Node("Object 0", &entities[0], orientation0);
-			Node("Object 1", &entities[1], orientation1);
-			Node("Object 2", &entities[2], orientation2);
+			Node("Entity 0", &ents[0]);
+			Node("Entity 1", &ents[1]);
+			Node("Entity 2", &ents[2]);
+			Node("Entity 3", &ents[3]);
+			Node("Entity 4", &ents[4]);
+			Node("Entity 5", &ents[5]);
+			Node("Entity 6", &ents[6]);
+			Node("Entity 7", &ents[7]);
+			Node("Entity 8", &ents[8]);
 			TreePop();
 		}
+		if (TreeNode("Lights")) {
+			LightNode("Light 0", &dir0);
+			LightNode("Light 1", &dir1);
+			LightNode("Light 2", &dir2);
+			LightNode("Light 3", &point0);
+			LightNode("Light 4", &point1);
+			TreePop();
+		}
+
 	}
 
 	ImGui::End();
+
+	unsigned int lightSize = sizeof(Light);
+	ps->SetData("dir0", &dir0, lightSize);
+	ps->SetData("dir2", &dir1, lightSize);
+	ps->SetData("dir3", &dir2, lightSize);
+	ps->SetData("point0", &point0, lightSize);
+	ps->SetData("point1", &point1, lightSize);
 	
-	for (int i = 0; i < entityCount; i++) {
-		entities[i].GetTransform()->UpdateMatrices();
+	for (int i = 0; i < entCount; i++) {
+		ents[i].GetTransform()->UpdateMatrices();
 	}
 
 	cams[activeCam]->Update(deltaTime);
@@ -340,11 +367,11 @@ void Game::Draw(float deltaTime, float totalTime)
 	// - These steps are generally repeated for EACH object you draw
 	// - Other Direct3D calls will also be necessary to do more complex things
 	{
-		for (int i = 0; i < entityCount; i++) {
+		for (int i = 0; i < entCount; i++) {
 			// set shader before drawing entity since most likely each entity will want to be drawn via a different shader instead of the same global one
-			entities[i].GetMaterial()->GetVertexShader()->SetShader();
-			entities[i].GetMaterial()->GetPixelShader()->SetShader();
-			entities[i].Draw(device, context, cams[activeCam]);
+			ents[i].GetMaterial()->GetVertexShader()->SetShader();
+			ents[i].GetMaterial()->GetPixelShader()->SetShader();
+			ents[i].Draw(device, context, cams[activeCam]);
 		}
 	}
 

@@ -9,9 +9,9 @@ cbuffer ExternalData : register(b0)
 	float3 cameraPosition;
     float roughness;
     float3 ambience;
-    Light directionalLight1;
-    Light dirLight2;
-    Light dirLight3;
+    Light dir0;
+    Light dir1;
+    Light dir2;
     Light point0;
     Light point1;
 }
@@ -35,6 +35,7 @@ float SpecularBRDF(float3 normal, float3 lightDir, float3 pixWorldPos, float rou
 	return specular;
 }
 
+// Calculate light amount from one directional light
 float3 HandleDirLight(Light dirLight, VertexToPixel input)
 {
     float diffAm = DiffuseBRDF(input.normal, dirLight.Direction);
@@ -45,6 +46,7 @@ float3 HandleDirLight(Light dirLight, VertexToPixel input)
     return pixColor;
 }
 
+// Make point lights weaken with distance
 float Attenuate(Light light, float3 worldPos)
 {
     float dist = distance(light.Position, worldPos);
@@ -53,6 +55,7 @@ float Attenuate(Light light, float3 worldPos)
     
 }
 
+// Calculate light amount from one point light
 float3 HandlePoint(Light pointLight, VertexToPixel input)
 {
     float3 direction = normalize(input.worldPosition - pointLight.Position);
@@ -79,11 +82,7 @@ float4 main(VertexToPixel input) : SV_TARGET
 	// must re-normalize any interpolated vectors that were produced from rasterizer
 	input.normal = normalize(input.normal);
 	
-    float diffuseAmount = DiffuseBRDF(input.normal, directionalLight1.Direction);
-
-    float specAmount = SpecularBRDF(input.normal, directionalLight1.Direction, input.worldPosition, roughness);
-	
-    float3 totalLight = HandleDirLight(directionalLight1, input) + HandleDirLight(dirLight2, input) + HandleDirLight(dirLight3, input);
+    float3 totalLight = HandleDirLight(dir0, input) + HandleDirLight(dir1, input) + HandleDirLight(dir2, input);
     totalLight += HandlePoint(point0, input) + HandlePoint(point1, input);
 	
     // float3 finalPixelColor = (directionalLight1.Color * colorTint * diffuseAmount + specAmount) + (ambience * colorTint);
