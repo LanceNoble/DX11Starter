@@ -268,7 +268,7 @@ void Game::Update(float deltaTime, float totalTime)
 { 
 	for (int i = 0; i < entCount; i++)
 	{
-		ents[i].GetTransform()->Rotate(1 * deltaTime,1 * deltaTime, 1 * deltaTime);
+		//ents[i].GetTransform()->Rotate(1 * deltaTime,1 * deltaTime, 1 * deltaTime);
 	}
 	// The imgui stuff needs to be done first
 	// Feed fresh input data to ImGui
