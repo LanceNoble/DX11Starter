@@ -68,24 +68,14 @@ Game::~Game()
 // --------------------------------------------------------
 void Game::Init()
 {
-	//directionalLight1 = CreateLight(LIGHT_TYPE_DIRECTIONAL, XMFLOAT3(1.0f, 0.0f, 0.0f));
-	directionalLight1 = {};
-	directionalLight1.Type = LIGHT_TYPE_DIRECTIONAL;
-	directionalLight1.Direction = XMFLOAT3(1.0f, 0.0f, 0.0f);
-	directionalLight1.Color = XMFLOAT3(1.0, 0.0f, 0.0f);
-	directionalLight1.Intensity = 1.0f;
+	directionalLight1 = MakeDir(1.0f, XMFLOAT3(1.0, 0.0f, 0.0f), XMFLOAT3(1.0f, 0.0f, 0.0f));
+	//dirLight2 = MakeDir(1.0f, XMFLOAT3(0.91f, 0.88f, 0.79f), XMFLOAT3(0.0f, -1.0f, 0.0f));
+	//dirLight3 = MakeDir(1.0f, XMFLOAT3(0.32f, 0.34f, 0.34f), XMFLOAT3(-1.0f, 0.0f, 0.0f));
+	dirLight2 = MakeDir(1.0f, XMFLOAT3(0.0f, 1.0f, 0.0f), XMFLOAT3(0.0f, -1.0f, 0.0f));
+	dirLight3 = MakeDir(1.0f, XMFLOAT3(0.0f, 0.0f, 1.0f), XMFLOAT3(-1.0f, 0.0f, 0.0f));
 
-	directionalLight2 = {};
-	directionalLight2.Type = LIGHT_TYPE_DIRECTIONAL;
-	directionalLight2.Direction = XMFLOAT3(0.0f, -1.0f, 0.0f);
-	directionalLight2.Color = XMFLOAT3(0.91f, 0.88f, 0.79f);
-	directionalLight2.Intensity = 1.0f;
-
-	directionalLight3 = {};
-	directionalLight3.Type = LIGHT_TYPE_DIRECTIONAL;
-	directionalLight3.Direction = XMFLOAT3(-1.0f, 0.0f, 0.0f);
-	directionalLight3.Color = XMFLOAT3(0.32f, 0.34f, 0.34f);
-	directionalLight3.Intensity = 1.0f;
+	point0 = MakePoint(1.0f, XMFLOAT3(1.0f,1.0f,1.0f), 3.0f, XMFLOAT3(-1.0f, 0.0f, 0.0f));
+	point1 = MakePoint(1.0f, XMFLOAT3(1.0f, 1.0f, 1.0f), 3.0f, XMFLOAT3(2.0f, 1.0f, 0.0f));
 
 	// Helper methods for loading shaders, creating some basic
 	// geometry to draw and some simple camera matrices.
@@ -113,6 +103,7 @@ void Game::Init()
 
 	XMFLOAT3 ambientColor = XMFLOAT3(0.1f, 0.1f, 0.25f);
 	XMFLOAT4 colorTint = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+	//XMFLOAT4 colorTint = XMFLOAT4(0.5f, 0.5f, 0.5f, 1.0f);
 	// roughness should not be 1, leads to weird visuals
 	// install direct directxtk_desktop_win10 for this DX11Starter project
 	// if this is a new machine
@@ -120,7 +111,7 @@ void Game::Init()
 	mat1 = make_shared<Material>(colorTint, vs, ps, 0.5f, ambientColor);
 	mat2 = make_shared<Material>(colorTint, vs, ps, 0.75f, ambientColor);
 
-	cams.push_back(make_shared<Camera>((float)windowWidth / windowHeight, XMFLOAT3(0, 0, -4), 70.0f));
+	cams.push_back(make_shared<Camera>((float)windowWidth / windowHeight, XMFLOAT3(0, 1, -5), 70.0f));
 	cams.push_back(make_shared<Camera>((float)windowWidth / windowHeight, XMFLOAT3(0, 0, -4), 90.0f));
 	
 	
@@ -147,7 +138,6 @@ void Game::Init()
 	entities[5].GetTransform()->SetPosition(2, 0, 0);
 	entities[6].GetTransform()->SetPosition(3, 0, 0);
 	
-	
 
 	timer = 1.0f;
 	fps = 0.0f;
@@ -166,10 +156,15 @@ void Game::LoadShaders()
 {
 	vs = make_shared<SimpleVertexShader>(device, context, FixPath(L"VertexShader.cso").c_str());
 	ps = make_shared<SimplePixelShader>(device, context, FixPath(L"PixelShader.cso").c_str());
+	unsigned int lightSize = sizeof(Light);
 	ps->SetData(
 		"directionalLight1", // name of light variable
 		&directionalLight1, // address of data
-		sizeof(Light)); // size of data
+		lightSize); // size of data
+	ps->SetData("dirLight2",&dirLight2,lightSize);
+	ps->SetData("dirLight3",&dirLight3,lightSize);
+	ps->SetData("point0", &point0, lightSize);
+	ps->SetData("point1", &point1, lightSize);
 }
 
 // --------------------------------------------------------
@@ -180,24 +175,37 @@ void Game::CreateGeometry()
 	mesh0 = make_shared<Mesh>(FixPath(L"../../Assets/Models/cube.obj").c_str(), device, context);
 	mesh1 = make_shared<Mesh>(FixPath(L"../../Assets/Models/cylinder.obj").c_str(), device, context);
 	mesh2 = make_shared<Mesh>(FixPath(L"../../Assets/Models/helix.obj").c_str(), device, context);
-	mesh3 = make_shared<Mesh>(FixPath(L"../../Assets/Models/quad.obj").c_str(), device, context);
-	mesh4 = make_shared<Mesh>(FixPath(L"../../Assets/Models/quad_double_sided.obj").c_str(), device, context);
-	mesh5 = make_shared<Mesh>(FixPath(L"../../Assets/Models/sphere.obj").c_str(), device, context);
-	mesh6 = make_shared<Mesh>(FixPath(L"../../Assets/Models/torus.obj").c_str(), device, context);
+	mesh3 = make_shared<Mesh>(FixPath(L"../../Assets/Models/sphere.obj").c_str(), device, context);
+	mesh4 = make_shared<Mesh>(FixPath(L"../../Assets/Models/torus.obj").c_str(), device, context);
+	mesh5 = make_shared<Mesh>(FixPath(L"../../Assets/Models/quad.obj").c_str(), device, context);
+	mesh6 = make_shared<Mesh>(FixPath(L"../../Assets/Models/quad_double_sided.obj").c_str(), device, context);
 
 }
 
-Light Game::CreateLight(int type, XMFLOAT3 dir, float range, XMFLOAT3 pos, float intensity, XMFLOAT3 color, float falloff)
+Light Game::MakeDir(float intensity, DirectX::XMFLOAT3 color, DirectX::XMFLOAT3 dir)
 {
 	Light light = {};
-	light.Type = type;
+	light.Type = LIGHT_TYPE_DIRECTIONAL;
 	light.Direction = dir;
-	light.Range = range;
-	light.Position = pos;
+	light.Color = color;
+	light.Intensity = intensity;
+	return light;
+}
+
+Light Game::MakePoint(float intensity, DirectX::XMFLOAT3 color, float range, DirectX::XMFLOAT3 pos)
+{
+	Light light = {};
+	light.Type = LIGHT_TYPE_POINT;
 	light.Intensity = intensity;
 	light.Color = color;
-	light.SpotFalloff = falloff;
+	light.Range = range;
+	light.Position = pos;
 	return light;
+}
+
+Light Game::MakeSpot(float, DirectX::XMFLOAT3)
+{
+	return Light();
 }
 
 
@@ -248,7 +256,7 @@ void Game::Update(float deltaTime, float totalTime)
 { 
 	for (int i = 0; i < entityCount; i++)
 	{
-		//entities[i].GetTransform()->Rotate(0,1 * deltaTime,0);
+		entities[i].GetTransform()->Rotate(1 * deltaTime,1 * deltaTime, 1 * deltaTime);
 	}
 	// The imgui stuff needs to be done first
 	// Feed fresh input data to ImGui

@@ -5,7 +5,7 @@ using namespace DirectX;
 
 Transform::Transform() {
 	position = XMFLOAT3(0.0f, 0.0f, 0.0f);
-	XMStoreFloat4(&orientation, XMQuaternionIdentity());
+	XMStoreFloat4(&orientation, XMQuaternionNormalize(XMQuaternionIdentity()));
 	scale = XMFLOAT3(1.0f, 1.0f, 1.0f);
 	XMStoreFloat4x4(&world, XMMatrixIdentity());
 	XMStoreFloat4x4(&worldInverseTranspose, XMMatrixIdentity());
@@ -127,9 +127,12 @@ void Transform::MoveRelative(float x, float y, float z)
 	XMVECTOR eulersCopy = XMLoadFloat3(&eulers);
 	XMVECTOR quat = XMLoadFloat4(&orientation);
 	XMVECTOR eulersRotated = XMVector3Rotate(eulersCopy, quat);
-	XMVECTOR position = XMLoadFloat3(&this->position);
-	position = XMVectorAdd(eulersRotated, position);
-	XMStoreFloat3(&this->position, position);
+	XMVECTOR positionCopy = XMLoadFloat3(&this->position);
+	//position = XMVectorAdd(eulersRotated, position);
+	//XMStoreFloat3(&this->position, position);
+	//eulersRotated += positionCopy;
+	XMVECTOR newPosition = eulersRotated + positionCopy;
+	XMStoreFloat3(&this->position, newPosition);
 }
 
 
@@ -141,9 +144,10 @@ void Transform::MoveRelative(float x, float y, float z)
 /// <param name="roll">how much to rotate the entity by in the z direction</param>
 void Transform::Rotate(float pitch, float yaw, float roll)
 {
-	XMVECTOR orientationCopy = XMLoadFloat4(&orientation);
-	XMVECTOR rotQuat = XMQuaternionRotationRollPitchYaw(pitch, yaw, roll);
-	XMStoreFloat4(&orientation, XMQuaternionMultiply(orientationCopy, rotQuat));
+	XMVECTOR orientationCopy = XMQuaternionNormalize(XMLoadFloat4(&orientation));
+	XMVECTOR rotQuat = XMQuaternionNormalize(XMQuaternionRotationRollPitchYaw(pitch, yaw, roll));
+	XMStoreFloat4(&orientation, XMQuaternionMultiply(rotQuat, orientationCopy));
+	//XMStoreFloat4(&orientation, XMQuaternionMultiply(orientationCopy, rotQuat));
 }
 
 /// <summary>
@@ -165,13 +169,13 @@ void Transform::Scale(float x, float y, float z)
 /// <returns>new right vector</returns>
 XMFLOAT3 Transform::GetRight()
 {
-	XMFLOAT3 eulers = XMFLOAT3(1, 0, 0);
-	XMVECTOR eulersCopy = XMLoadFloat3(&eulers);
+	XMFLOAT3 worldRight = XMFLOAT3(1.0f, 0.0f, 0.0f);
+	XMVECTOR worldRightCopy = XMLoadFloat3(&worldRight);
 	XMVECTOR quat = XMLoadFloat4(&this->orientation);
-	XMVECTOR eulersRotated = XMVector3Rotate(eulersCopy, quat);
-	XMFLOAT3 finalEulers;
-	XMStoreFloat3(&finalEulers, eulersRotated);
-	return finalEulers;
+	XMVECTOR worldRightCopyRotated = XMVector3Rotate(worldRightCopy, quat);
+	XMFLOAT3 relativeRight;
+	XMStoreFloat3(&relativeRight, worldRightCopyRotated);
+	return relativeRight;
 }
 
 /// <summary>
@@ -180,7 +184,7 @@ XMFLOAT3 Transform::GetRight()
 /// <returns>new up vector</returns>
 XMFLOAT3 Transform::GetUp()
 {
-	XMFLOAT3 eulers = XMFLOAT3(0, 1, 0);
+	XMFLOAT3 eulers = XMFLOAT3(0.0f, 1.0f, 0.0f);
 	XMVECTOR eulersCopy = XMLoadFloat3(&eulers);
 	XMVECTOR quat = XMLoadFloat4(&this->orientation);
 	XMVECTOR eulersRotated = XMVector3Rotate(eulersCopy, quat);
@@ -195,7 +199,7 @@ XMFLOAT3 Transform::GetUp()
 /// <returns>new forward vector</returns>
 XMFLOAT3 Transform::GetForward()
 {
-	XMFLOAT3 eulers = XMFLOAT3(0, 0, 1);
+	XMFLOAT3 eulers = XMFLOAT3(0.0f, 0.0f, 1.0f);
 	XMVECTOR eulersCopy = XMLoadFloat3(&eulers);
 	XMVECTOR quat = XMLoadFloat4(&this->orientation);
 	XMVECTOR eulersRotated = XMVector3Rotate(eulersCopy, quat);
@@ -221,6 +225,7 @@ void Transform::UpdateMatrices()
 	// This is because DirectX does row major storage but hlsl uses column major
 	// this reverse order is to account for that transpose
 	XMMATRIX world = scale * rotation * translation;
+	//XMMATRIX world = rotation  * scale * translation;
 
 	XMStoreFloat4x4(&this->world, world);
 	XMStoreFloat4x4(&worldInverseTranspose, XMMatrixInverse(0, XMMatrixTranspose(world)));

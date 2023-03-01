@@ -21,7 +21,7 @@ Camera::Camera(float aspRat, XMFLOAT3 initPos, float fov)
 	this->fov = fov;
 	nearClip = 0.1f;
 	farClip = 900;
-	moveSp = 1;
+	moveSp = 2;
 	lookSpX = 0.001f;
 	lookSpY = 0.001f;
 	UpdateViewMatrix();
@@ -92,31 +92,33 @@ void Camera::Update(float dt)
 	}
 	if (input.KeyDown('A'))
 	{
-		//transform.MoveRelative(moveSp * dt * -1, 0, 0);
-		XMFLOAT3 offset = XMFLOAT3();
-		XMFLOAT3 up = XMFLOAT3(0,1,0);
-		XMVECTOR upCopy = XMLoadFloat3(&up);
-		XMFLOAT3 forward = transform.GetForward();
-		XMVECTOR forwardCopy = XMLoadFloat3(&forward);
-		XMVECTOR offsetCopy = XMVector3Cross(upCopy, forwardCopy);
-		//offsetCopy = offsetCopy / -999;
-		offsetCopy = offsetCopy * -dt;
-		XMStoreFloat3(&offset, offsetCopy);
-		transform.MoveAbsolute(offset.x, offset.y, offset.z);
+		// //transform.MoveRelative(moveSp * dt * -1, 0, 0);
+		// XMFLOAT3 offset = XMFLOAT3();
+		// XMFLOAT3 up = XMFLOAT3(0,1,0);
+		// XMVECTOR upCopy = XMLoadFloat3(&up);
+		// XMFLOAT3 forward = transform.GetForward();
+		// XMVECTOR forwardCopy = XMLoadFloat3(&forward);
+		// XMVECTOR offsetCopy = XMVector3Cross(upCopy, forwardCopy);
+		// //offsetCopy = offsetCopy / -999;
+		// offsetCopy = offsetCopy * -dt * moveSp;
+		// XMStoreFloat3(&offset, offsetCopy);
+		// transform.MoveAbsolute(offset.x, offset.y, offset.z);
+		transform.MoveRelative(-moveSp * dt,0,0);
 	}
 	if (input.KeyDown('D'))
 	{
-		//transform.MoveRelative(moveSp * dt, 0, 0);
-		XMFLOAT3 offset = XMFLOAT3();
-		XMFLOAT3 up = XMFLOAT3(0, 1, 0);
-		XMVECTOR upCopy = XMLoadFloat3(&up);
-		XMFLOAT3 forward = transform.GetForward();
-		XMVECTOR forwardCopy = XMLoadFloat3(&forward);
-		XMVECTOR offsetCopy = XMVector3Cross(upCopy, forwardCopy);
-		//offsetCopy = offsetCopy / 999;
-		offsetCopy = offsetCopy * dt;
-		XMStoreFloat3(&offset, offsetCopy);
-		transform.MoveAbsolute(offset.x, offset.y, offset.z);
+		// //transform.MoveRelative(moveSp * dt, 0, 0);
+		// XMFLOAT3 offset = XMFLOAT3();
+		// XMFLOAT3 up = XMFLOAT3(0, 1, 0);
+		// XMVECTOR upCopy = XMLoadFloat3(&up);
+		// XMFLOAT3 forward = transform.GetForward();
+		// XMVECTOR forwardCopy = XMLoadFloat3(&forward);
+		// XMVECTOR offsetCopy = XMVector3Cross(upCopy, forwardCopy);
+		// //offsetCopy = offsetCopy / 999;
+		// offsetCopy = offsetCopy * dt * moveSp;
+		// XMStoreFloat3(&offset, offsetCopy);
+		// transform.MoveAbsolute(offset.x, offset.y, offset.z);
+		transform.MoveRelative(moveSp * dt, 0, 0);
 	}
 	if (input.KeyDown(' '))
 	{
@@ -139,15 +141,16 @@ void Camera::Update(float dt)
 		XMFLOAT3 angleBtwnGen;
 		XMStoreFloat3(&angleBtwnGen, angleBtwn);
 
-		if (angleBtwnGen.y >= 3 || angleBtwnGen.y <= 0.1)
-		{
-			lookSpY = 0.00001f;
-		}
-		else 
-		{
-			lookSpY = 0.001f;
-		}
+		// if (angleBtwnGen.y >= 3 || angleBtwnGen.y <= 0.1)
+		// {
+		// 	lookSpY = 0.00001f;
+		// }
+		// else 
+		// {
+		// 	lookSpY = 0.001f;
+		// }
 		
+		//transform.Rotate(cursorMovementY, cursorMovementX, 0);
 		transform.Rotate(cursorMovementY, 0, 0);
 		transform.Rotate(0, cursorMovementX, 0);
 	}
