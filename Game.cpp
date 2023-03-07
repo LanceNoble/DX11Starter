@@ -96,7 +96,7 @@ void Game::Init()
 	dir0 = MakeDir(1.0f, XMFLOAT3(0.0, 0.0f, 1.0f), XMFLOAT3(1.0f, 0.0f, 0.0f));
 	dir1 = MakeDir(1.0f, XMFLOAT3(0.91f, 0.88f, 0.79f), XMFLOAT3(0.0f, -1.0f, 0.0f));
 	dir2 = MakeDir(1.0f, XMFLOAT3(0.32f, 0.34f, 0.34f), XMFLOAT3(-1.0f, 0.0f, 0.0f));
-	point0 = MakePoint(1.0f, XMFLOAT3(1.0f, 1.0f, 1.0f), 3.0f, XMFLOAT3(-1.0f, 0.0f, 0.0f));
+	point0 = MakePoint(1.0f , XMFLOAT3(1.0f, 1.0f, 1.0f), 3.0f, XMFLOAT3(-1.0f, 0.0f, 0.0f));
 	point1 = MakePoint(1.0f, XMFLOAT3(1.0f, 1.0f, 1.0f), 3.0f, XMFLOAT3(2.0f, 1.0f, 0.0f));
 
 	// Helper methods for loading shaders, creating some basic
@@ -105,10 +105,46 @@ void Game::Init()
 	LoadShaders();
 	CreateGeometry();
 
+	
+
+	// Load textures and create sampler state before creating materials
+	CreateWICTextureFromFile(device.Get(), context.Get(), FixPath(L"../../Assets/Textures/rustymetal.png").c_str(), nullptr, srv0.GetAddressOf());
+	CreateWICTextureFromFile(device.Get(), context.Get(), FixPath(L"../../Assets/Textures/brokentiles.png").c_str(), nullptr, srv1.GetAddressOf());
+
+	
+	D3D11_SAMPLER_DESC sampDesc;
+	sampDesc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
+	sampDesc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
+	sampDesc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
+	for (int i = 0; i < 4; i++) {
+		sampDesc.BorderColor[i] = 0.0f;
+	}
+	sampDesc.ComparisonFunc = D3D11_COMPARISON_NEVER;
+	sampDesc.Filter = D3D11_FILTER_ANISOTROPIC;
+	sampDesc.MaxAnisotropy = 8;
+	sampDesc.MaxLOD = D3D11_FLOAT32_MAX;
+	sampDesc.MinLOD = 0.0f;
+	sampDesc.MipLODBias = 0.0f;
+
+	device->CreateSamplerState(&sampDesc, sampState.GetAddressOf());
+
+
 	XMFLOAT3 ambientColor = XMFLOAT3(0.1f, 0.1f, 0.25f);
 	mats[0] = make_shared<Material>(XMFLOAT4(0.44f, 0.31f, 0.22f, 1.0f), vs, ps, 0.5f, ambientColor);
 	mats[1] = make_shared<Material>(XMFLOAT4(0.5f, 0.5f, 0.5f, 1.0f), vs, ps, 0.99f, ambientColor);
 	mats[2] = make_shared<Material>(XMFLOAT4(1.0f, 0.84f, 0.0f, 1.0f), vs, ps, 0.0f, ambientColor);
+
+	// After creating materials, add the SRVs and samp states to them
+	for (int i = 0; i < 3; i++) {
+		mats[i]->AddSampler("BasicSampler", sampState);
+	}
+	
+	// we only have one Texture2D and one SamplerState in the pixel shader,
+	// so we can only add one Texture2D and one SamplerState to a material
+	mats[0]->AddTextureSRV("SurfaceTexture", srv0);
+	mats[1]->AddTextureSRV("SurfaceTexture", srv1);
+	mats[2]->AddTextureSRV("SurfaceTexture", srv0);
+	
 
 	ents[0] = Entity(meshes[0], mats[0]);
 	ents[1] = Entity(meshes[0], mats[1]);
@@ -119,7 +155,6 @@ void Game::Init()
 	ents[6] = Entity(meshes[2], mats[0]);
 	ents[7] = Entity(meshes[2], mats[1]);
 	ents[8] = Entity(meshes[2], mats[2]);
-	
 
 	for (int i = 0; i < entCount; i++) {
 		ents[i].GetTransform()->SetScale(0.25, 0.25, 0.25);
@@ -152,6 +187,7 @@ void Game::LoadShaders()
 {
 	vs = make_shared<SimpleVertexShader>(device, context, FixPath(L"VertexShader.cso").c_str());
 	ps = make_shared<SimplePixelShader>(device, context, FixPath(L"PixelShader.cso").c_str());
+
 	unsigned int lightSize = sizeof(Light);
 	ps->SetData("dir0", &dir0, lightSize);
 	ps->SetData("dir2", &dir1, lightSize);
@@ -329,12 +365,15 @@ void Game::Update(float deltaTime, float totalTime)
 
 	ImGui::End();
 
+
 	unsigned int lightSize = sizeof(Light);
 	ps->SetData("dir0", &dir0, lightSize);
 	ps->SetData("dir2", &dir1, lightSize);
 	ps->SetData("dir3", &dir2, lightSize);
 	ps->SetData("point0", &point0, lightSize);
 	ps->SetData("point1", &point1, lightSize);
+
+
 	
 	for (int i = 0; i < entCount; i++) {
 		ents[i].GetTransform()->UpdateMatrices();
@@ -351,6 +390,7 @@ void Game::Update(float deltaTime, float totalTime)
 // --------------------------------------------------------
 void Game::Draw(float deltaTime, float totalTime)
 {
+
 	// Frame START
 	// - These things should happen ONCE PER FRAME
 	// - At the beginning of Game::Draw() before drawing *anything*

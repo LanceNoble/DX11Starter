@@ -1,5 +1,9 @@
 #include "Lighting.hlsli"
 
+SamplerState BasicSampler : register(s0); // "s" registers for samplers
+Texture2D SurfaceTexture : register(t0); // "t" registers for textures
+
+
 //must set proper compiler options for every new shader added
 cbuffer ExternalData : register(b0)
 {
@@ -9,6 +13,7 @@ cbuffer ExternalData : register(b0)
 	float3 cameraPosition;
     float roughness;
     float3 ambience;
+    float uvOffset;
     Light dir0;
     Light dir1;
     Light dir2;
@@ -42,8 +47,7 @@ float3 HandleDirLight(Light dirLight, VertexToPixel input)
     float specAm = SpecularBRDF(input.normal, dirLight.Direction, input.worldPosition, roughness);
     
     // To tint the specular, surround "diffAm + specAm" in another inner set of parentheses
-    float3 pixColor = (dirLight.Color * colorTint * diffAm + specAm);
-    return pixColor;
+    return (dirLight.Color * (diffAm + specAm)) * dirLight.Intensity;
 }
 
 // Make point lights weaken with distance
@@ -62,9 +66,7 @@ float3 HandlePoint(Light pointLight, VertexToPixel input)
     float diffAm = DiffuseBRDF(input.normal, direction);
     float specAm = SpecularBRDF(input.normal, direction, input.worldPosition, roughness);
     
-    float3 pixColor = (pointLight.Color * colorTint * diffAm + specAm);
-    pixColor *= Attenuate(pointLight, input.worldPosition);
-    return pixColor;
+    return ((pointLight.Color * (diffAm + specAm)) * Attenuate(pointLight, input.worldPosition)) * pointLight.Intensity;
 }
 
 
@@ -79,13 +81,17 @@ float3 HandlePoint(Light pointLight, VertexToPixel input)
 // --------------------------------------------------------
 float4 main(VertexToPixel input) : SV_TARGET
 {
+    input.uv.g += uvOffset;
+    float3 surfaceColor = SurfaceTexture.Sample(BasicSampler, input.uv).rgb;
+    
 	// must re-normalize any interpolated vectors that were produced from rasterizer
 	input.normal = normalize(input.normal);
 	
     float3 totalLight = HandleDirLight(dir0, input) + HandleDirLight(dir1, input) + HandleDirLight(dir2, input);
     totalLight += HandlePoint(point0, input) + HandlePoint(point1, input);
 	
-    // float3 finalPixelColor = (directionalLight1.Color * colorTint * diffuseAmount + specAmount) + (ambience * colorTint);
-    float3 finalPixelColor = totalLight + (ambience * colorTint);
+    float3 finalPixelColor = surfaceColor * colorTint * (ambience + totalLight);
+    
     return float4(finalPixelColor, 1);
+
 }

@@ -61,6 +61,8 @@ Transform* Entity::GetTransform()
 /// </summary>
 void Entity::Draw(Microsoft::WRL::ComPtr<ID3D11Device> device, Microsoft::WRL::ComPtr<ID3D11DeviceContext> deviceContext, std::shared_ptr<Camera> cam)
 {
+	static float uvOffset;
+	uvOffset += 0.00005f;
 	shared_ptr<SimpleVertexShader> vs = mat->GetVertexShader();
 	// Very important that string parameters match the variable names in your cbuffer
 	//vs->SetFloat4("colorTint", mat->GetColorTint());
@@ -77,6 +79,10 @@ void Entity::Draw(Microsoft::WRL::ComPtr<ID3D11Device> device, Microsoft::WRL::C
 	//ps->SetFloat4("lightColor", XMFLOAT4(1.0f,1.0f,1.0f,1.0f));
 	ps->SetFloat("roughness", mat->GetRoughness());
 	ps->SetFloat3("ambience", mat->GetAmbience());
+	ps->SetFloat("uvOffset", uvOffset);
 	ps->CopyAllBufferData();
+
+	mat->PrepareMaterial();
+
 	mesh->Draw();
 }
