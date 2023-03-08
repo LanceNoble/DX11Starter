@@ -36,7 +36,7 @@ float DiffuseBRDF(float3 normal, float3 lightDir) {
 // raises it to a specular exponent power determined by the entity's material's roughness
 // to find the appropriate specular amount
 float SpecularBRDF(float3 normal, float3 lightDir, float3 pixWorldPos, float roughness) {
-    float specular = pow(saturate(dot(reflect(lightDir, normal), normalize(cameraPosition - pixWorldPos))), (1.0f - roughness) * MAX_SPECULAR_EXPONENT);
+    float specular = pow(saturate(dot(reflect(normalize(lightDir), normal), normalize(cameraPosition - pixWorldPos))), (1.0f - roughness) * MAX_SPECULAR_EXPONENT);
 	return specular;
 }
 
