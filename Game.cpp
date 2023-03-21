@@ -108,8 +108,8 @@ void Game::Init()
 	
 
 	// Load textures and create sampler state before creating materials
-	CreateWICTextureFromFile(device.Get(), context.Get(), FixPath(L"../../Assets/Textures/rustymetal.png").c_str(), nullptr, srv0.GetAddressOf());
-	CreateWICTextureFromFile(device.Get(), context.Get(), FixPath(L"../../Assets/Textures/brokentiles.png").c_str(), nullptr, srv1.GetAddressOf());
+	CreateWICTextureFromFile(device.Get(), context.Get(), FixPath(L"../../Assets/Textures/Surface/rock.png").c_str(), nullptr, srv0.GetAddressOf());
+	CreateWICTextureFromFile(device.Get(), context.Get(), FixPath(L"../../Assets/Textures/Surface/cushion.png").c_str(), nullptr, srv1.GetAddressOf());
 
 	
 	D3D11_SAMPLER_DESC sampDesc;
@@ -144,6 +144,7 @@ void Game::Init()
 	mats[0]->AddTextureSRV("SurfaceTexture", srv0);
 	mats[1]->AddTextureSRV("SurfaceTexture", srv1);
 	mats[2]->AddTextureSRV("SurfaceTexture", srv0);
+	mats[0]->AddTextureSRV("NormalMap", srv0);
 	
 
 	ents[0] = Entity(meshes[0], mats[0]);

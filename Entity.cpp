@@ -62,7 +62,7 @@ Transform* Entity::GetTransform()
 void Entity::Draw(Microsoft::WRL::ComPtr<ID3D11Device> device, Microsoft::WRL::ComPtr<ID3D11DeviceContext> deviceContext, std::shared_ptr<Camera> cam)
 {
 	static float uvOffset;
-	uvOffset += 0.00005f;
+	// uvOffset += 0.00005f;
 	shared_ptr<SimpleVertexShader> vs = mat->GetVertexShader();
 	// Very important that string parameters match the variable names in your cbuffer
 	//vs->SetFloat4("colorTint", mat->GetColorTint());

@@ -2,6 +2,7 @@
 
 SamplerState BasicSampler : register(s0); // "s" registers for samplers
 Texture2D SurfaceTexture : register(t0); // "t" registers for textures
+Texture2D NormalTexture : register(t1);
 
 
 //must set proper compiler options for every new shader added
@@ -86,6 +87,8 @@ float4 main(VertexToPixel input) : SV_TARGET
     
 	// must re-normalize any interpolated vectors that were produced from rasterizer
 	input.normal = normalize(input.normal);
+    
+    
 	
     float3 totalLight = HandleDirLight(dir0, input) + HandleDirLight(dir1, input) + HandleDirLight(dir2, input);
     totalLight += HandlePoint(point0, input) + HandlePoint(point1, input);
