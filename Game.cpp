@@ -108,8 +108,10 @@ void Game::Init()
 	
 
 	// Load textures and create sampler state before creating materials
-	CreateWICTextureFromFile(device.Get(), context.Get(), FixPath(L"../../Assets/Textures/Surface/rock.png").c_str(), nullptr, srv0.GetAddressOf());
-	CreateWICTextureFromFile(device.Get(), context.Get(), FixPath(L"../../Assets/Textures/Surface/cushion.png").c_str(), nullptr, srv1.GetAddressOf());
+	CreateWICTextureFromFile(device.Get(), context.Get(), FixPath(L"../../Assets/Textures/Surface/rock.png").c_str(), nullptr, srvSurf0.GetAddressOf());
+	CreateWICTextureFromFile(device.Get(), context.Get(), FixPath(L"../../Assets/Textures/Surface/cushion.png").c_str(), nullptr, srvSurf1.GetAddressOf());
+	CreateWICTextureFromFile(device.Get(), context.Get(), FixPath(L"../../Assets/Textures/Normal/rock_normals.png").c_str(), nullptr, srvNorm0.GetAddressOf());
+	CreateWICTextureFromFile(device.Get(), context.Get(), FixPath(L"../../Assets/Textures/Normal/cushion_normals.png").c_str(), nullptr, srvNorm1.GetAddressOf());
 
 	
 	D3D11_SAMPLER_DESC sampDesc;
@@ -141,10 +143,12 @@ void Game::Init()
 	
 	// we only have one Texture2D and one SamplerState in the pixel shader,
 	// so we can only add one Texture2D and one SamplerState to a material
-	mats[0]->AddTextureSRV("SurfaceTexture", srv0);
-	mats[1]->AddTextureSRV("SurfaceTexture", srv1);
-	mats[2]->AddTextureSRV("SurfaceTexture", srv0);
-	mats[0]->AddTextureSRV("NormalMap", srv0);
+	mats[0]->AddTextureSRV("SurfaceTexture", srvSurf0);
+	mats[0]->AddTextureSRV("NormalMap", srvNorm0);
+	mats[1]->AddTextureSRV("SurfaceTexture", srvSurf1);
+	mats[1]->AddTextureSRV("NormalMap", srvNorm1);
+	mats[2]->AddTextureSRV("SurfaceTexture", srvSurf0);
+	mats[2]->AddTextureSRV("NormalMap", srvNorm0);
 	
 
 	ents[0] = Entity(meshes[0], mats[0]);
@@ -204,7 +208,7 @@ void Game::CreateGeometry()
 {
 	meshes[0] = make_shared<Mesh>(FixPath(L"../../Assets/Models/cube.obj").c_str(), device, context);
 	meshes[1] = make_shared<Mesh>(FixPath(L"../../Assets/Models/helix.obj").c_str(), device, context);
-	meshes[2] = make_shared<Mesh>(FixPath(L"../../Assets/Models/torus.obj").c_str(), device, context);
+	meshes[2] = make_shared<Mesh>(FixPath(L"../../Assets/Models/sphere.obj").c_str(), device, context);
 }
 
 Light Game::MakeDir(float intensity, DirectX::XMFLOAT3 color, DirectX::XMFLOAT3 dir)
@@ -305,7 +309,8 @@ void Game::Update(float deltaTime, float totalTime)
 { 
 	for (int i = 0; i < entCount; i++)
 	{
-		//ents[i].GetTransform()->Rotate(1 * deltaTime,1 * deltaTime, 1 * deltaTime);
+		//ents[i].GetTransform()->Rotate(.5 * deltaTime,.5 * deltaTime, .5 * deltaTime);
+		ents[i].GetTransform()->Rotate(0, .25 * deltaTime, 0);
 	}
 	// The imgui stuff needs to be done first
 	// Feed fresh input data to ImGui

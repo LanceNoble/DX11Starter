@@ -32,8 +32,10 @@ class Game: public DXCore {
 		std::shared_ptr<SimplePixelShader> ps;
 		std::shared_ptr<Mesh> meshes[3];
 		// Each loaded texture needs a unique srv
-		Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> srv0;
-		Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> srv1;
+		Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> srvSurf0;
+		Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> srvSurf1;
+		Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> srvNorm0;
+		Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> srvNorm1;
 		Microsoft::WRL::ComPtr<ID3D11SamplerState> sampState;
 		std::shared_ptr<Material> mats[3];
 		Entity ents[9];

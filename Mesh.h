@@ -13,8 +13,10 @@ class Mesh
 		Microsoft::WRL::ComPtr<ID3D11Buffer> indexBuffer;
 		Microsoft::WRL::ComPtr<ID3D11DeviceContext> deviceContext;
 		int indexCount = 0;
+		void CalculateTangents(Vertex* verts, int numVerts, unsigned int* indices, int numIndices);
 		void MakeVB(Vertex*, int, Microsoft::WRL::ComPtr<ID3D11Device>);
 		void MakeIB(unsigned int*, int, Microsoft::WRL::ComPtr<ID3D11Device>);
+		
 	public:
 		Mesh(Vertex*, int, unsigned int*, int, Microsoft::WRL::ComPtr<ID3D11Device>, Microsoft::WRL::ComPtr<ID3D11DeviceContext>);
 		Mesh(const wchar_t*, Microsoft::WRL::ComPtr<ID3D11Device>, Microsoft::WRL::ComPtr<ID3D11DeviceContext>);

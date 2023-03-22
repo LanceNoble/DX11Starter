@@ -8,9 +8,9 @@
 
 #define MAX_SPECULAR_EXPONENT 256.0f
 
-
-
 // ALL of your code pieces (structs, functions, etc.) go here!
+
+
 
 // order of variable declarations matter
 // because we're sending this to a constant buffer in the pixel shader
@@ -32,6 +32,7 @@ struct VertexShaderInput
     float3 localPosition : POSITION; 
     float2 uv : TEXCOORD;
     float3 normal : NORMAL;
+    float3 tangent : TANGENT;
 };
 
 struct VertexToPixel
@@ -40,6 +41,7 @@ struct VertexToPixel
     float2 uv : TEXCOORD;
     float3 normal : NORMAL;
     float3 worldPosition : POSITION;
+    float3 tangent : TANGENT;
 };
 
 #endif

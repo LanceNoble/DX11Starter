@@ -60,6 +60,8 @@ VertexToPixel main( VertexShaderInput input )
 	// to account for non-uniform scales, use a worldInvTranspose matrix
     output.normal = mul((float3x3) worldInvTranspose, input.normal);
 	
+    output.tangent = mul((float3x3) world, input.tangent);
+	
 	// calculate world position of pixel, and only grab the first three components
     output.worldPosition = mul(world, float4(input.localPosition, 1)).xyz;
 	
