@@ -30,7 +30,13 @@ class Game: public DXCore {
 		Light MakeSpot(float, DirectX::XMFLOAT3);
 		std::shared_ptr<SimpleVertexShader> vs;
 		std::shared_ptr<SimplePixelShader> ps;
+		std::shared_ptr<SimpleVertexShader> skyVS;
+		std::shared_ptr<SimplePixelShader> skyPS;
+		Microsoft::WRL::ComPtr<ID3D11RasterizerState> skyRastState;
+
 		std::shared_ptr<Mesh> meshes[3];
+		std::shared_ptr<Mesh> skyMesh;
+		Entity skyEnt;
 		// Each loaded texture needs a unique srv
 		Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> srvSurf0;
 		Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> srvSurf1;

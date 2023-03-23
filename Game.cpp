@@ -161,6 +161,8 @@ void Game::Init()
 	ents[7] = Entity(meshes[2], mats[1]);
 	ents[8] = Entity(meshes[2], mats[2]);
 
+	skyEnt = Entity(skyMesh, mats[0]);
+
 	for (int i = 0; i < entCount; i++) {
 		ents[i].GetTransform()->SetScale(0.25, 0.25, 0.25);
 	}
@@ -178,6 +180,7 @@ void Game::Init()
 	cams.push_back(make_shared<Camera>((float)windowWidth / windowHeight, XMFLOAT3(0, 1, -6), 70.0f));
 	cams.push_back(make_shared<Camera>((float)windowWidth / windowHeight, XMFLOAT3(0, 0, -4), 90.0f));
 
+	
 }
 
 // --------------------------------------------------------
@@ -192,6 +195,8 @@ void Game::LoadShaders()
 {
 	vs = make_shared<SimpleVertexShader>(device, context, FixPath(L"VertexShader.cso").c_str());
 	ps = make_shared<SimplePixelShader>(device, context, FixPath(L"PixelShader.cso").c_str());
+	skyVS = std::make_shared<SimpleVertexShader>(device, context, FixPath(L"SkyVS.cso").c_str());
+	skyPS = std::make_shared<SimplePixelShader>(device, context, FixPath(L"SkyPS.cso").c_str());
 
 	unsigned int lightSize = sizeof(Light);
 	ps->SetData("dir0", &dir0, lightSize);
@@ -206,6 +211,8 @@ void Game::LoadShaders()
 // --------------------------------------------------------
 void Game::CreateGeometry()
 {
+	skyMesh = make_shared<Mesh>(FixPath(L"../../Assets/Models/cube.obj").c_str(), device, context);
+
 	meshes[0] = make_shared<Mesh>(FixPath(L"../../Assets/Models/cube.obj").c_str(), device, context);
 	meshes[1] = make_shared<Mesh>(FixPath(L"../../Assets/Models/helix.obj").c_str(), device, context);
 	meshes[2] = make_shared<Mesh>(FixPath(L"../../Assets/Models/sphere.obj").c_str(), device, context);
@@ -420,6 +427,23 @@ void Game::Draw(float deltaTime, float totalTime)
 			ents[i].Draw(device, context, cams[activeCam]);
 		}
 	}
+
+	context->RSSetState(skyRastState.Get());
+
+	//Draw sky
+	skyVS->SetShader();
+	skyPS->SetShader();
+
+	skyVS->SetMatrix4x4("viewMat", cams[activeCam]->GetViewMat());
+	skyVS->SetMatrix4x4("projMat", cams[activeCam]->GetProjMat());
+	skyVS->CopyAllBufferData();
+
+	//skyMesh->SetAllBuffersAndDraw();
+
+	skyEnt.Draw(device, context, cams[activeCam]);
+
+	context->RSSetState(0); // 0 (null) means reset to default
+	context->OMSetDepthStencilState(0, 0);
 
 	// Frame END
 	// - These should happen exactly ONCE PER FRAME
