@@ -10,16 +10,13 @@ cbuffer ExternalData : register(b0)
 {
 	// declare variables that hold the external data (data sent in from c++)
 	// order at which they're declared matters (they define where in the buffer these variables will get their data)
-	float4 colorTint;
-	float3 cameraPosition;
+	float4 tint;
+	float3 camPos;
     float roughness;
     float3 ambience;
-    float uvOffset;
-    Light dir0;
-    Light dir1;
-    Light dir2;
-    Light point0;
-    Light point1;
+    Light dir;
+    Light pt;
+    Light spot;
 }
 
 // Cut the specular if the diffuse contribution is zero
@@ -51,8 +48,13 @@ float DiffuseBRDF(float3 normal, float3 lightDir) {
 // raises it to a specular exponent power determined by the entity's material's roughness
 // to find the appropriate specular amount
 float SpecularBRDF(float3 normal, float3 lightDir, float3 pixWorldPos, float roughness) {
-    float specular = pow(saturate(dot(reflect(normalize(lightDir), normal), normalize(cameraPosition - pixWorldPos))), (1.0f - roughness) * MAX_SPECULAR_EXPONENT);
-	return specular;
+    float specular = 0;
+    
+    // Conditional accounts for the spec exp being 0 and giving a result of 1, which causes the spec to be pure white
+    if (MAX_SPECULAR_EXPONENT > 0.05)
+        specular = pow(saturate(dot(reflect(normalize(lightDir), normal), normalize(camPos - pixWorldPos))), (1.0f - roughness) * MAX_SPECULAR_EXPONENT);
+    
+    return specular;
 }
 
 // Calculate light amount from one directional light
@@ -86,6 +88,17 @@ float3 HandlePoint(Light pointLight, VertexToPixel input)
     return ((pointLight.Color * (diffAm + specAm)) * Attenuate(pointLight, input.worldPosition)) * pointLight.Intensity;
 }
 
+float3 HandleSpot(Light spot, VertexToPixel input)
+{
+    float3 dir = normalize(input.worldPosition - spot.Position);
+    float diffAm = DiffuseBRDF(input.normal, dir);
+    float specAm = SpecularBRDF(input.normal, dir, input.worldPosition, roughness);
+    cutSpec(specAm, diffAm);
+    
+    //float angleBtwn = cos();
+    return float3(0,0,0);
+}
+
 
 // --------------------------------------------------------
 // The entry point (main method) for our pixel shader
@@ -100,10 +113,7 @@ float4 main(VertexToPixel input) : SV_TARGET
 {
     float3 unpackedNormal = NormalMap.Sample(BasicSampler, input.uv).rgb * 2 - 1;
     unpackedNormal = normalize(unpackedNormal); // Don't forget to normalize (because of rasterizer interpolation)
-    
-    
-    
-    input.uv.g += uvOffset;
+
     float3 surfaceColor = SurfaceTexture.Sample(BasicSampler, input.uv).rgb;
     
     // Gram-Schmidt orthonormalize process for making the normal and tanget orthogonal
@@ -118,13 +128,11 @@ float4 main(VertexToPixel input) : SV_TARGET
     // Assumes that input.normal is the normal later in the shader
     input.normal = mul(unpackedNormal, TBN); // Note the multiplication order
     
-    
+    float3 totalLight = HandleDirLight(dir, input);
+    totalLight += HandlePoint(pt, input);
+    //totalLight += HandleSpot(spot, input);
 	
-    float3 totalLight = HandleDirLight(dir0, input) + HandleDirLight(dir1, input) + HandleDirLight(dir2, input);
-    totalLight += HandlePoint(point0, input) + HandlePoint(point1, input);
-	
-    float3 finalPixelColor = surfaceColor * colorTint * (ambience + totalLight);
+    float3 finalPixelColor = surfaceColor * tint.rgb * (ambience + totalLight);
     
     return float4(finalPixelColor, 1);
-    //return float4(input.normal, 1);
 }

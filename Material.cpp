@@ -64,6 +64,9 @@ void Material::AddSampler(std::string sampStateName, Microsoft::WRL::ComPtr<ID3D
 	//pixelShader->SetSamplerState(sampStateName, sampState);
 }
 
+/// <summary>
+/// An advanced engine might prepare materials and shaders in a Renderer class
+/// </summary>
 void Material::PrepareMaterial()
 {
 	// .first accesses the current element's key in the hashtable

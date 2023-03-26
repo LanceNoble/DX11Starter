@@ -1,5 +1,10 @@
 #pragma once
 #include <DirectXMath.h>
+
+/// <summary>
+/// <para>Transformation class</para>
+/// Gonna create a transformation hierarchy out of this class when I need to
+/// </summary>
 class Transform
 {
 private:
@@ -22,6 +27,7 @@ public:
 	void MoveAbsolute(float, float, float);
 	void MoveRelative(float, float, float);
 	void Rotate(float, float, float);
+	void RotAx(DirectX::XMFLOAT3, float);
 	void Scale(float, float, float);
 	DirectX::XMFLOAT3 GetRight();
 	DirectX::XMFLOAT3 GetUp();

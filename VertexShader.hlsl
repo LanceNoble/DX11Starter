@@ -12,12 +12,10 @@ cbuffer ExternalData : register(b0)
 {
 	// declare variables that hold the external data (data sent in from c++)
 	// order at which they're declared matters (they define where in the buffer these variables will get their data)
-	//float4 colorTint;
 	matrix world;
-	matrix viewMat;
-	matrix projMat;
-    matrix worldInvTranspose;
-
+	matrix view;
+	matrix proj;
+    matrix worldIT;
 }
 
 
@@ -42,7 +40,7 @@ VertexToPixel main( VertexShaderInput input )
 	// - Each of these components is then automatically divided by the W component, 
 	//   which we're leaving at 1.0 for now (this is more useful when dealing with 
 	//   a perspective projection matrix, which we'll get to in the future).
-	matrix wvp = mul(projMat, mul(viewMat, world));
+	matrix wvp = mul(proj, mul(view, world));
 	//output.screenPosition = mul(world, float4(input.localPosition, 1.0f));
 	output.screenPosition = mul(wvp, float4(input.localPosition, 1.0f));
 	//output.worldPosition = mul(world, float4(input.localPosition, 1.0f)).xyz;
@@ -58,7 +56,7 @@ VertexToPixel main( VertexShaderInput input )
 	//output.normal = mul((float3x3)world, input.normal);
 	
 	// to account for non-uniform scales, use a worldInvTranspose matrix
-    output.normal = mul((float3x3) worldInvTranspose, input.normal);
+    output.normal = mul((float3x3) worldIT, input.normal);
 	
     output.tangent = mul((float3x3) world, input.tangent);
 	

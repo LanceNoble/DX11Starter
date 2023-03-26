@@ -39,7 +39,11 @@ Game::Game(HINSTANCE hInstance)
 	CreateConsoleWindow(500, 120, 32, 120);
 	printf("Console window created successfully.  Feel free to printf() here.\n");
 #endif
-
+	// Initialize Game members so VS stops yelling
+	activeCam = 0;
+	dir = {};
+	pt = {};
+	spot = {};
 }						 
 
 // -----------------------Entity(triangle1);---------------------------------
@@ -87,17 +91,12 @@ void Game::Init()
 	ImGui_ImplDX11_Init(device.Get(), context.Get());
 	ImGui::StyleColorsDark();
 
-	meshCount = sizeof(meshes) / sizeof(Mesh);
-	matCount = sizeof(mats) / sizeof(Material);
-	entCount = sizeof(ents) / sizeof(Entity);
 	activeCam = 0;
 
 	// Make sure to initialize the lights before loading the shaders
-	dir0 = MakeDir(1.0f, XMFLOAT3(0.0, 0.0f, 1.0f), XMFLOAT3(1.0f, 0.0f, 0.0f));
-	dir1 = MakeDir(1.0f, XMFLOAT3(0.91f, 0.88f, 0.79f), XMFLOAT3(0.0f, -1.0f, 0.0f));
-	dir2 = MakeDir(1.0f, XMFLOAT3(0.32f, 0.34f, 0.34f), XMFLOAT3(-1.0f, 0.0f, 0.0f));
-	point0 = MakePoint(1.0f , XMFLOAT3(1.0f, 1.0f, 1.0f), 3.0f, XMFLOAT3(-1.0f, 0.0f, 0.0f));
-	point1 = MakePoint(1.0f, XMFLOAT3(1.0f, 1.0f, 1.0f), 3.0f, XMFLOAT3(2.0f, 1.0f, 0.0f));
+	dir = MakeDir(XMFLOAT3(0,0,-1), XMFLOAT3(.93f,.69f,.38f), 1);
+	pt = MakePoint(10, XMFLOAT3(0,-1,0), 1, XMFLOAT3(1,1,1));
+	spot = MakeSpot(XMFLOAT3(0,-1,0), 10, XMFLOAT3(0,1,0), 1, XMFLOAT3(.46f,.36f,1), 5);
 
 	// Helper methods for loading shaders, creating some basic
 	// geometry to draw and some simple camera matrices.
@@ -109,11 +108,51 @@ void Game::Init()
 
 	// Load textures and create sampler state before creating materials
 	CreateWICTextureFromFile(device.Get(), context.Get(), FixPath(L"../../Assets/Textures/Surface/rock.png").c_str(), nullptr, srvSurf0.GetAddressOf());
-	CreateWICTextureFromFile(device.Get(), context.Get(), FixPath(L"../../Assets/Textures/Surface/cushion.png").c_str(), nullptr, srvSurf1.GetAddressOf());
+	CreateWICTextureFromFile(device.Get(), context.Get(), FixPath(L"../../Assets/Textures/Surface/saulSurf.png").c_str(), nullptr, srvSurf1.GetAddressOf());
 	CreateWICTextureFromFile(device.Get(), context.Get(), FixPath(L"../../Assets/Textures/Normal/rock_normals.png").c_str(), nullptr, srvNorm0.GetAddressOf());
-	CreateWICTextureFromFile(device.Get(), context.Get(), FixPath(L"../../Assets/Textures/Normal/cushion_normals.png").c_str(), nullptr, srvNorm1.GetAddressOf());
-
+	CreateWICTextureFromFile(device.Get(), context.Get(), FixPath(L"../../Assets/Textures/Normal/saulNorm.png").c_str(), nullptr, srvNorm1.GetAddressOf());
 	
+	D3D11_RASTERIZER_DESC rastDesc = {};
+	rastDesc.CullMode = D3D11_CULL_FRONT; // Draw inside instead of outside
+	rastDesc.FillMode = D3D11_FILL_SOLID;
+	rastDesc.DepthClipEnable = true;
+	device->CreateRasterizerState(&rastDesc, skyRS.GetAddressOf());
+
+	// Depth state so we accept pixels with a depth <= 1
+	D3D11_DEPTH_STENCIL_DESC depthDesc = {};
+	depthDesc.DepthEnable = true;
+	depthDesc.DepthFunc = D3D11_COMPARISON_LESS_EQUAL;
+	depthDesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
+	device->CreateDepthStencilState(&depthDesc, skyDSS.GetAddressOf());
+
+	D3D11_SAMPLER_DESC skySampDesc = {};
+	skySampDesc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
+	skySampDesc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
+	skySampDesc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
+	for (int i = 0; i < 4; i++) {
+		skySampDesc.BorderColor[i] = 0.0f;
+	}
+	skySampDesc.ComparisonFunc = D3D11_COMPARISON_NEVER;
+	skySampDesc.Filter = D3D11_FILTER_ANISOTROPIC;
+	skySampDesc.MaxAnisotropy = 8;
+	skySampDesc.MaxLOD = D3D11_FLOAT32_MAX;
+	skySampDesc.MinLOD = 0.0f;
+	skySampDesc.MipLODBias = 0.0f;
+
+	device->CreateSamplerState(&skySampDesc, skySS.GetAddressOf());
+	
+	sky = Sky(skySS, skySRV, skyDSS, skyRS, skyMesh, skyVS, skyPS, device);
+	sky.CreateCubemap(FixPath(L"../../Assets/Textures/Sky/CloudsPink/right.png").c_str(), 
+		FixPath(L"../../Assets/Textures/Sky/CloudsPink/left.png").c_str(), 
+		FixPath(L"../../Assets/Textures/Sky/CloudsPink/up.png").c_str(), 
+		FixPath(L"../../Assets/Textures/Sky/CloudsPink/down.png").c_str(), 
+		FixPath(L"../../Assets/Textures/Sky/CloudsPink/front.png").c_str(), 
+		FixPath(L"../../Assets/Textures/Sky/CloudsPink/back.png").c_str(), 
+		device,
+		context);
+	
+	
+
 	D3D11_SAMPLER_DESC sampDesc;
 	sampDesc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
 	sampDesc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
@@ -132,10 +171,11 @@ void Game::Init()
 
 
 	XMFLOAT3 ambientColor = XMFLOAT3(0.1f, 0.1f, 0.25f);
-	mats[0] = make_shared<Material>(XMFLOAT4(0.44f, 0.31f, 0.22f, 1.0f), vs, ps, 0.5f, ambientColor);
-	mats[1] = make_shared<Material>(XMFLOAT4(0.5f, 0.5f, 0.5f, 1.0f), vs, ps, 0.99f, ambientColor);
-	mats[2] = make_shared<Material>(XMFLOAT4(1.0f, 0.84f, 0.0f, 1.0f), vs, ps, 0.0f, ambientColor);
 
+	mats.push_back(make_shared<Material>(XMFLOAT4(0.44f, 0.31f, 0.22f, 1.0f), vs, ps, 0.0f, ambientColor));
+	mats.push_back(make_shared<Material>(XMFLOAT4(0.5f, 0.5f, 0.5f, 1.0f), vs, ps, 0.0f, ambientColor));
+	mats.push_back(make_shared<Material>(XMFLOAT4(1.0f, 0.84f, 0.0f, 1.0f), vs, ps, 0.0f, ambientColor));
+	
 	// After creating materials, add the SRVs and samp states to them
 	for (int i = 0; i < 3; i++) {
 		mats[i]->AddSampler("BasicSampler", sampState);
@@ -150,35 +190,32 @@ void Game::Init()
 	mats[2]->AddTextureSRV("SurfaceTexture", srvSurf0);
 	mats[2]->AddTextureSRV("NormalMap", srvNorm0);
 	
+	ents.push_back(Ent(meshes[0], mats[0]));
+	ents.push_back(Ent(meshes[0], mats[1]));
+	ents.push_back(Ent(meshes[0], mats[2]));
+	ents.push_back(Ent(meshes[1], mats[0]));
+	ents.push_back(Ent(meshes[1], mats[1]));
+	ents.push_back(Ent(meshes[1], mats[2]));
+	ents.push_back(Ent(meshes[2], mats[0]));
+	ents.push_back(Ent(meshes[2], mats[1]));
+	ents.push_back(Ent(meshes[2], mats[2]));
 
-	ents[0] = Entity(meshes[0], mats[0]);
-	ents[1] = Entity(meshes[0], mats[1]);
-	ents[2] = Entity(meshes[0], mats[2]);
-	ents[3] = Entity(meshes[1], mats[0]);
-	ents[4] = Entity(meshes[1], mats[1]);
-	ents[5] = Entity(meshes[1], mats[2]);
-	ents[6] = Entity(meshes[2], mats[0]);
-	ents[7] = Entity(meshes[2], mats[1]);
-	ents[8] = Entity(meshes[2], mats[2]);
-
-	skyEnt = Entity(skyMesh, mats[0]);
-
-	for (int i = 0; i < entCount; i++) {
-		ents[i].GetTransform()->SetScale(0.25, 0.25, 0.25);
+	for (int i = 0; i < ents.size(); i++) {
+		ents[i].GetTf()->SetScale(0.25, 0.25, 0.25);
 	}
 
-	ents[0].GetTransform()->SetPosition(-4, 0, 0);
-	ents[1].GetTransform()->SetPosition(-3, 0, 0);
-	ents[2].GetTransform()->SetPosition(-2, 0, 0);
-	ents[3].GetTransform()->SetPosition(-1, 0, 0);
-	ents[4].GetTransform()->SetPosition(0, 0, 0);
-	ents[5].GetTransform()->SetPosition(1, 0, 0);
-	ents[6].GetTransform()->SetPosition(2, 0, 0);
-	ents[7].GetTransform()->SetPosition(3, 0, 0);
-	ents[8].GetTransform()->SetPosition(4, 0, 0);
+	ents[0].GetTf()->SetPosition(-4, 0, 0);
+	ents[1].GetTf()->SetPosition(-3, 0, 0);
+	ents[2].GetTf()->SetPosition(-2, 0, 0);
+	ents[3].GetTf()->SetPosition(-1, 0, 0);
+	ents[4].GetTf()->SetPosition(0, 0, 0);
+	ents[5].GetTf()->SetPosition(1, 0, 0);
+	ents[6].GetTf()->SetPosition(2, 0, 0);
+	ents[7].GetTf()->SetPosition(3, 0, 0);
+	ents[8].GetTf()->SetPosition(4, 0, 0);
 
-	cams.push_back(make_shared<Camera>((float)windowWidth / windowHeight, XMFLOAT3(0, 1, -6), 70.0f));
-	cams.push_back(make_shared<Camera>((float)windowWidth / windowHeight, XMFLOAT3(0, 0, -4), 90.0f));
+	cams.push_back(make_shared<Cam>((float)windowWidth / windowHeight, XMFLOAT3(0, 1, -6), XMFLOAT3(), 70.0f));
+	cams.push_back(make_shared<Cam>((float)windowWidth / windowHeight, XMFLOAT3(0, 0, -4), XMFLOAT3()));
 
 	
 }
@@ -195,15 +232,16 @@ void Game::LoadShaders()
 {
 	vs = make_shared<SimpleVertexShader>(device, context, FixPath(L"VertexShader.cso").c_str());
 	ps = make_shared<SimplePixelShader>(device, context, FixPath(L"PixelShader.cso").c_str());
-	skyVS = std::make_shared<SimpleVertexShader>(device, context, FixPath(L"SkyVS.cso").c_str());
-	skyPS = std::make_shared<SimplePixelShader>(device, context, FixPath(L"SkyPS.cso").c_str());
 
 	unsigned int lightSize = sizeof(Light);
-	ps->SetData("dir0", &dir0, lightSize);
-	ps->SetData("dir2", &dir1, lightSize);
-	ps->SetData("dir3", &dir2, lightSize);
-	ps->SetData("point0", &point0, lightSize);
-	ps->SetData("point1", &point1, lightSize);
+	ps->SetData("dir", &dir, lightSize);
+	ps->SetData("pt", &pt, lightSize);
+	ps->SetData("spot", &spot, lightSize);
+
+	// Load sky shaders
+	skyVS = make_shared<SimpleVertexShader>(device, context, FixPath(L"SkyVS.cso").c_str());
+	skyPS = make_shared<SimplePixelShader>(device, context, FixPath(L"SkyPS.cso").c_str());
+
 }
 
 // --------------------------------------------------------
@@ -213,12 +251,12 @@ void Game::CreateGeometry()
 {
 	skyMesh = make_shared<Mesh>(FixPath(L"../../Assets/Models/cube.obj").c_str(), device, context);
 
-	meshes[0] = make_shared<Mesh>(FixPath(L"../../Assets/Models/cube.obj").c_str(), device, context);
-	meshes[1] = make_shared<Mesh>(FixPath(L"../../Assets/Models/helix.obj").c_str(), device, context);
-	meshes[2] = make_shared<Mesh>(FixPath(L"../../Assets/Models/sphere.obj").c_str(), device, context);
+	meshes.push_back(make_shared<Mesh>(FixPath(L"../../Assets/Models/cube.obj").c_str(), device, context));
+	meshes.push_back(make_shared<Mesh>(FixPath(L"../../Assets/Models/cylinder.obj").c_str(), device, context));
+	meshes.push_back(make_shared<Mesh>(FixPath(L"../../Assets/Models/sphere.obj").c_str(), device, context));
 }
 
-Light Game::MakeDir(float intensity, DirectX::XMFLOAT3 color, DirectX::XMFLOAT3 dir)
+Light Game::MakeDir(XMFLOAT3 dir, XMFLOAT3 color, float intensity)
 {
 	Light light = {};
 	light.Type = LIGHT_TYPE_DIRECTIONAL;
@@ -228,19 +266,27 @@ Light Game::MakeDir(float intensity, DirectX::XMFLOAT3 color, DirectX::XMFLOAT3 
 	return light;
 }
 
-Light Game::MakePoint(float intensity, DirectX::XMFLOAT3 color, float range, DirectX::XMFLOAT3 pos)
+Light Game::MakePoint(float range, DirectX::XMFLOAT3 pos, float intensity, DirectX::XMFLOAT3 color)
 {
 	Light light = {};
 	light.Type = LIGHT_TYPE_POINT;
-	light.Intensity = intensity;
-	light.Color = color;
 	light.Range = range;
 	light.Position = pos;
+	light.Intensity = intensity;
+	light.Color = color;
 	return light;
 }
 
-Light Game::MakeSpot(float, DirectX::XMFLOAT3)
+Light Game::MakeSpot(XMFLOAT3 dir, float range, XMFLOAT3 pos, float intensity, XMFLOAT3 color, float spotFalloff)
 {
+	Light light = {};
+	light.Type = LIGHT_TYPE_SPOT;
+	light.Direction = dir;
+	light.Range = range;
+	light.Position = pos;
+	light.Intensity = intensity;
+	light.Color = color;
+	light.SpotFalloff = spotFalloff;
 	return Light();
 }
 
@@ -255,7 +301,7 @@ void Game::OnResize()
 	// Handle base-level DX resize stuff
 	for (int i = 0; i < cams.size(); i++)
 	{
-		cams[i]->UpdateProjectionMatrix((float)this->windowWidth / this->windowHeight);
+		cams[i]->UpdateProj((float)this->windowWidth / this->windowHeight);
 	}
 	DXCore::OnResize();
 }
@@ -265,19 +311,17 @@ void Game::OnResize()
 /// </summary>
 /// <param name="label">tree node name</param>
 /// <param name="object">object to showcase in tree node</param>
-void Game::Node(const char* label, Entity* object)
+void Game::Node(const char* label, Ent* object)
 {
 	if (TreeNode(label))
 	{
-		float position[3] = { object->GetTransform()->GetPosition().x, object->GetTransform()->GetPosition().y, object->GetTransform()->GetPosition().z };
-		float scale[3] = { object->GetTransform()->GetScale().x, object->GetTransform()->GetScale().y, object->GetTransform()->GetScale().z };
+		float position[3] = { object->GetTf()->GetPosition().x, object->GetTf()->GetPosition().y, object->GetTf()->GetPosition().z };
+		float scale[3] = { object->GetTf()->GetScale().x, object->GetTf()->GetScale().y, object->GetTf()->GetScale().z };
 		if (DragFloat3("Position", position, 0.01f)) {
-			playerControlled = true;
-			object->GetTransform()->SetPosition(position[0], position[1], position[2]);
+			object->GetTf()->SetPosition(position[0], position[1], position[2]);
 		}
 		if (DragFloat3("Scale", scale, 0.01f)) {
-			playerControlled = true;
-			object->GetTransform()->SetScale(scale[0], scale[1], scale[2]);
+			object->GetTf()->SetScale(scale[0], scale[1], scale[2]);
 		}
 		TreePop();
 	}
@@ -314,10 +358,10 @@ void Game::LightNode(const char* label, Light* light) {
 // --------------------------------------------------------
 void Game::Update(float deltaTime, float totalTime)
 { 
-	for (int i = 0; i < entCount; i++)
+	for (int i = 0; i < ents.size(); i++)
 	{
 		//ents[i].GetTransform()->Rotate(.5 * deltaTime,.5 * deltaTime, .5 * deltaTime);
-		ents[i].GetTransform()->Rotate(0, .25 * deltaTime, 0);
+		ents[i].GetTf()->Rotate(0, .25f * deltaTime, 0);
 	}
 	// The imgui stuff needs to be done first
 	// Feed fresh input data to ImGui
@@ -346,9 +390,9 @@ void Game::Update(float deltaTime, float totalTime)
 	ImGui::Begin("Basic Scene Info");
 	ImGui::Text("Window: %f x %f", ImGui::GetIO().DisplaySize.x, ImGui::GetIO().DisplaySize.y);
 	ImGui::DragInt("Active Cam", &activeCam, 1.0f, 0, 1);
-	ImGui::Text("Cam Pos: %f, %f, %f", cams[activeCam]->transform.GetPosition().x, cams[activeCam]->transform.GetPosition().y, cams[activeCam]->transform.GetPosition().z);
-	ImGui::Text("Cam FOV: %f", cams[activeCam]->fov);
-	ImGui::Text("Cam Aspect Ratio: %f", cams[activeCam]->aspRat);
+	ImGui::Text("Cam Pos: %f, %f, %f", cams[activeCam]->GetPos().x, cams[activeCam]->GetPos().y, cams[activeCam]->GetPos().z);
+	ImGui::Text("Cam FOV: %f", cams[activeCam]->GetFOV());
+	ImGui::Text("Cam Aspect Ratio: %f", cams[activeCam]->GetAspRat());
 
 	if (CollapsingHeader("Inspector"))
 	{
@@ -366,11 +410,9 @@ void Game::Update(float deltaTime, float totalTime)
 			TreePop();
 		}
 		if (TreeNode("Lights")) {
-			LightNode("Light 0", &dir0);
-			LightNode("Light 1", &dir1);
-			LightNode("Light 2", &dir2);
-			LightNode("Light 3", &point0);
-			LightNode("Light 4", &point1);
+			LightNode("Light 0", &dir);
+			LightNode("Light 1", &pt);
+			LightNode("Light 2", &spot);
 			TreePop();
 		}
 
@@ -380,19 +422,15 @@ void Game::Update(float deltaTime, float totalTime)
 
 
 	unsigned int lightSize = sizeof(Light);
-	ps->SetData("dir0", &dir0, lightSize);
-	ps->SetData("dir2", &dir1, lightSize);
-	ps->SetData("dir3", &dir2, lightSize);
-	ps->SetData("point0", &point0, lightSize);
-	ps->SetData("point1", &point1, lightSize);
+	ps->SetData("dir", &dir, lightSize);
+	ps->SetData("pt", &pt, lightSize);
+	ps->SetData("spot", &spot, lightSize);
 
-
-	
-	for (int i = 0; i < entCount; i++) {
-		ents[i].GetTransform()->UpdateMatrices();
+	for (int i = 0; i < ents.size(); i++) {
+		ents[i].GetTf()->UpdateMatrices();
 	}
 
-	cams[activeCam]->Update(deltaTime);
+	cams[activeCam]->Move(deltaTime);
 	// Example input checking: Quit if the escape key is pressed
 	if (Input::GetInstance().KeyDown(VK_ESCAPE))
 		Quit();
@@ -420,30 +458,15 @@ void Game::Draw(float deltaTime, float totalTime)
 	// - These steps are generally repeated for EACH object you draw
 	// - Other Direct3D calls will also be necessary to do more complex things
 	{
-		for (int i = 0; i < entCount; i++) {
+		for (int i = 0; i < ents.size(); i++) {
 			// set shader before drawing entity since most likely each entity will want to be drawn via a different shader instead of the same global one
-			ents[i].GetMaterial()->GetVertexShader()->SetShader();
-			ents[i].GetMaterial()->GetPixelShader()->SetShader();
-			ents[i].Draw(device, context, cams[activeCam]);
+			ents[i].GetMat()->GetVertexShader()->SetShader();
+			ents[i].GetMat()->GetPixelShader()->SetShader();
+			ents[i].Draw(cams[activeCam]);
 		}
 	}
 
-	context->RSSetState(skyRastState.Get());
-
-	//Draw sky
-	skyVS->SetShader();
-	skyPS->SetShader();
-
-	skyVS->SetMatrix4x4("viewMat", cams[activeCam]->GetViewMat());
-	skyVS->SetMatrix4x4("projMat", cams[activeCam]->GetProjMat());
-	skyVS->CopyAllBufferData();
-
-	//skyMesh->SetAllBuffersAndDraw();
-
-	skyEnt.Draw(device, context, cams[activeCam]);
-
-	context->RSSetState(0); // 0 (null) means reset to default
-	context->OMSetDepthStencilState(0, 0);
+	sky.Draw(context, cams, activeCam);
 
 	// Frame END
 	// - These should happen exactly ONCE PER FRAME

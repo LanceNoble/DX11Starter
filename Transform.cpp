@@ -5,7 +5,7 @@ using namespace DirectX;
 
 Transform::Transform() {
 	position = XMFLOAT3(0.0f, 0.0f, 0.0f);
-	XMStoreFloat4(&orientation, XMQuaternionNormalize(XMQuaternionIdentity()));
+	XMStoreFloat4(&orientation, XMQuaternionIdentity());
 	scale = XMFLOAT3(1.0f, 1.0f, 1.0f);
 	XMStoreFloat4x4(&world, XMMatrixIdentity());
 	XMStoreFloat4x4(&worldInverseTranspose, XMMatrixIdentity());
@@ -32,7 +32,7 @@ void Transform::SetPosition(float x, float y, float z)
 /// <param name="roll">the roll of the new position</param>
 void Transform::SetOrientation(float pitch, float yaw, float roll)
 {
-	XMStoreFloat4(&orientation, XMQuaternionRotationRollPitchYaw(pitch, yaw, roll));
+	XMStoreFloat4(&orientation, XMQuaternionNormalize(XMQuaternionRotationRollPitchYaw(pitch, yaw, roll)));
 }
 
 /// <summary>
@@ -147,8 +147,16 @@ void Transform::Rotate(float pitch, float yaw, float roll)
 	XMVECTOR orientationCopy = XMQuaternionNormalize(XMLoadFloat4(&orientation));
 	XMVECTOR rotQuat = XMQuaternionNormalize(XMQuaternionRotationRollPitchYaw(pitch, yaw, roll));
 	XMStoreFloat4(&orientation, XMQuaternionMultiply(rotQuat, orientationCopy));
-	//XMStoreFloat4(&orientation, XMQuaternionMultiply(orientationCopy, rotQuat));
 }
+
+void Transform::RotAx(DirectX::XMFLOAT3 axis, float angle)
+{
+	XMVECTOR orientationMath = XMQuaternionNormalize(XMLoadFloat4(&orientation));
+	XMVECTOR axisMath = XMLoadFloat3(&axis);
+	XMVECTOR rotQuat = XMQuaternionNormalize(XMQuaternionRotationAxis(axisMath, angle));
+	XMStoreFloat4(&orientation, XMQuaternionNormalize(XMQuaternionMultiply(orientationMath, rotQuat)));
+}
+
 
 /// <summary>
 /// scale entity

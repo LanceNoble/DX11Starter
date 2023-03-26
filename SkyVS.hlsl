@@ -1,40 +1,36 @@
+#include "Lighting.hlsli"
+
 cbuffer ExternalData : register(b0)
 {
 	// declare variables that hold the external data (data sent in from c++)
 	// order at which they're declared matters (they define where in the buffer these variables will get their data)
-    matrix viewMat;
-    matrix projMat;
-    matrix worldInvTranspose;
-
+    matrix view;
+    matrix proj;
 }
 
-struct VertexShaderInput
-{
-    float3 localPosition : POSITION;
-    float2 uv : TEXCOORD;
-    float3 normal : NORMAL;
-    float3 tangent : TANGENT;
-};
-
-struct VertexToPixel
+struct SkyVertexToPixel
 {
     float4 screenPosition : SV_POSITION;
+    float3 sampleDir : DIRECTION;
 };
 
-VertexToPixel main(VertexShaderInput input)
+SkyVertexToPixel main(VertexShaderInput input)
 {
 	// Set up output struct
-    VertexToPixel output;
+    SkyVertexToPixel output;
 
-    matrix viewNoTranslation = viewMat;
+    // can't edit variables from a constant buffer, so make a copy of it here
+    matrix viewNoTranslation = view;
     viewNoTranslation._14 = 0;
     viewNoTranslation._24 = 0;
     viewNoTranslation._34 = 0;
     
-    matrix vp = mul(projMat, viewMat);
+    matrix vp = mul(proj, viewNoTranslation);
+    // We assume the sky box is at the origin alongside the camera, so we can skip the world matrix
     output.screenPosition = mul(vp, float4(input.localPosition, 1.0f));
-    
     output.screenPosition.z = output.screenPosition.w;
-	
+    
+    output.sampleDir = input.localPosition;
+    //output.sampleDir = mul(world, float4(input.localPosition, 1)).xyz;
     return output;
 }
