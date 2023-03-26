@@ -95,8 +95,8 @@ void Game::Init()
 
 	// Make sure to initialize the lights before loading the shaders
 	dir = MakeDir(XMFLOAT3(0,0,-1), XMFLOAT3(.93f,.69f,.38f), 1);
-	pt = MakePoint(10, XMFLOAT3(0,-1,0), 1, XMFLOAT3(1,1,1));
-	spot = MakeSpot(XMFLOAT3(0,-1,0), 10, XMFLOAT3(0,1,0), 1, XMFLOAT3(.46f,.36f,1), 5);
+	pt = MakePoint(3, XMFLOAT3(0,-1,0), 1, XMFLOAT3(1,1,1));
+	spot = MakeSpot(XMFLOAT3(0,-1,0), 10, XMFLOAT3(0,5,0), 1, XMFLOAT3(.46f,.36f,1), XMConvertToRadians(30));
 
 	// Helper methods for loading shaders, creating some basic
 	// geometry to draw and some simple camera matrices.
@@ -107,6 +107,8 @@ void Game::Init()
 	
 
 	// Load textures and create sampler state before creating materials
+	// Saul Goodman surface texture from https://knowyourmeme.com/memes/3d-saul-goodman
+	// Saul Goodman normal map from https://steamcommunity.com/sharedfiles/filedetails/?id=2818203002
 	CreateWICTextureFromFile(device.Get(), context.Get(), FixPath(L"../../Assets/Textures/Surface/rock.png").c_str(), nullptr, srvSurf0.GetAddressOf());
 	CreateWICTextureFromFile(device.Get(), context.Get(), FixPath(L"../../Assets/Textures/Surface/saulSurf.png").c_str(), nullptr, srvSurf1.GetAddressOf());
 	CreateWICTextureFromFile(device.Get(), context.Get(), FixPath(L"../../Assets/Textures/Normal/rock_normals.png").c_str(), nullptr, srvNorm0.GetAddressOf());
@@ -287,7 +289,7 @@ Light Game::MakeSpot(XMFLOAT3 dir, float range, XMFLOAT3 pos, float intensity, X
 	light.Intensity = intensity;
 	light.Color = color;
 	light.SpotFalloff = spotFalloff;
-	return Light();
+	return light;
 }
 
 

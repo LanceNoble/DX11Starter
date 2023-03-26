@@ -90,12 +90,19 @@ float3 HandlePoint(Light pointLight, VertexToPixel input)
 
 float3 HandleSpot(Light spot, VertexToPixel input)
 {
+    // Attempting spot calculation from https://ogldev.org/www/tutorial21/tutorial21.html
     float3 dir = normalize(input.worldPosition - spot.Position);
     float diffAm = DiffuseBRDF(input.normal, dir);
     float specAm = SpecularBRDF(input.normal, dir, input.worldPosition, roughness);
     cutSpec(specAm, diffAm);
     
-    //float angleBtwn = cos();
+    
+    float angleBtwn = cos(spot.SpotFalloff / 2);
+    float dotProduct = dot(normalize(spot.Direction), normalize(input.worldPosition));
+    if (dotProduct < angleBtwn)
+    {
+        return ((spot.Color * (diffAm + specAm)) * Attenuate(spot, input.worldPosition)) * spot.Intensity;
+    }
     return float3(0,0,0);
 }
 
@@ -130,7 +137,7 @@ float4 main(VertexToPixel input) : SV_TARGET
     
     float3 totalLight = HandleDirLight(dir, input);
     totalLight += HandlePoint(pt, input);
-    //totalLight += HandleSpot(spot, input);
+    totalLight += HandleSpot(spot, input);
 	
     float3 finalPixelColor = surfaceColor * tint.rgb * (ambience + totalLight);
     
