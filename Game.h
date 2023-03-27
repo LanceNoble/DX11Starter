@@ -3,6 +3,7 @@
 #include <vector>
 #include <DirectXMath.h>
 #include <wrl/client.h>
+#include <array>
 #include "WICTextureLoader.h"
 #include "DXCore.h"
 #include "Ent.h"
@@ -21,9 +22,10 @@ class Game: public DXCore {
 		void OnResize();
 		void Update(float deltaTime, float totalTime);
 		void Draw(float deltaTime, float totalTime);
+
 	private:
-		void LoadShaders(); 
-		void CreateGeometry();
+		void LoadSurfNorm(std::unordered_map<std::string, std::array<Microsoft::WRL::ComPtr<ID3D11ShaderResourceView>, 2>>*,
+			std::string, const wchar_t*, const wchar_t*);
 		void Node(const char*, Ent*);
 		void LightNode(const char*, Light*);
 		Light MakeDir(DirectX::XMFLOAT3, DirectX::XMFLOAT3, float);
@@ -37,7 +39,6 @@ class Game: public DXCore {
 		// Sky
 		Sky sky;
 		Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> skySRV;
-		Microsoft::WRL::ComPtr<ID3D11SamplerState> skySS;
 		Microsoft::WRL::ComPtr<ID3D11DepthStencilState> skyDSS;
 		Microsoft::WRL::ComPtr<ID3D11RasterizerState> skyRS;
 		std::shared_ptr<Mesh> skyMesh;
@@ -50,21 +51,27 @@ class Game: public DXCore {
 		Light spot;
 
 		// Meshes
-		std::vector<std::shared_ptr<Mesh>> meshes;
+		std::unordered_map<std::string, std::shared_ptr<Mesh>> meshes;
 
-		// Materials
-		std::vector<std::shared_ptr<Material>> mats;
-		Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> srvSurf0;
-		Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> srvSurf1;
-		Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> srvNorm0;
-		Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> srvNorm1;
-		Microsoft::WRL::ComPtr<ID3D11SamplerState> sampState;
-		//std::shared_ptr<Material> mats[3];
+		// Mats
+		std::unordered_map<std::string, std::shared_ptr<Material>> mats;
 
-		// Entities
+		// SRVs (Every texture needs a unique srv)
+		std::unordered_map<std::string, std::array<Microsoft::WRL::ComPtr<ID3D11ShaderResourceView>, 2>> textures;
+
+		// SSs
+		Microsoft::WRL::ComPtr<ID3D11SamplerState> ss;
+
+		// Ents
 		std::vector<Ent> ents;
 
-		// Cameras
+		// Floor
+		Ent tiles[15][15];
+
+		// Saul Goodman
+		Ent saulGoodman;
+
+		// Cams
 		std::vector<std::shared_ptr<Cam>> cams;
 		int activeCam;
 };

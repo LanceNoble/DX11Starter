@@ -139,13 +139,7 @@ void Sky::Draw(Microsoft::WRL::ComPtr<ID3D11DeviceContext> context, std::vector<
 	simpleVertexShader->SetMatrix4x4("view", cams[activeCam]->GetView());
 	simpleVertexShader->SetMatrix4x4("proj", cams[activeCam]->GetProj());
 	simpleVertexShader->CopyAllBufferData();
-	
-	
-	
 
-	
-
-	//skyMesh->SetAllBuffersAndDraw();
 	mesh->Draw();
 
 	// These states are only for the sky, so stop using them when you're done drawing the sky
