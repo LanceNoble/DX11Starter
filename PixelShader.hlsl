@@ -96,10 +96,10 @@ float3 HandleSpot(Light spot, VertexToPixel input)
     float specAm = SpecularBRDF(input.normal, dir, input.worldPosition, roughness);
     cutSpec(specAm, diffAm);
     
-    
+    // https://stackoverflow.com/questions/338762/how-do-you-calculate-the-angle-between-two-normals-in-glsl
     float angleBtwn = cos(spot.SpotFalloff / 2);
-    float dotProduct = dot(normalize(spot.Direction), normalize(input.worldPosition));
-    if (dotProduct < angleBtwn)
+    float dotProduct = dot(normalize(spot.Direction), dir);
+    if (dotProduct > angleBtwn)
     {
         return ((spot.Color * (diffAm + specAm)) * Attenuate(spot, input.worldPosition)) * spot.Intensity;
     }
