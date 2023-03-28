@@ -396,9 +396,9 @@ void Game::Update(float deltaTime, float totalTime)
 			TreePop();
 		}
 		if (TreeNode("Lights")) {
-			LightNode("Light 0", &dir);
-			LightNode("Light 1", &pt);
-			LightNode("Light 2", &spot);
+			LightNode("Directional Light", &dir);
+			LightNode("Point Light", &pt);
+			LightNode("Spot Light", &spot);
 			TreePop();
 		}
 
