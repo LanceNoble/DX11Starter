@@ -122,7 +122,7 @@ void Game::Init()
 	// Saul Goodman surface texture from https://knowyourmeme.com/memes/3d-saul-goodman
 	// Saul Goodman normal map from https://steamcommunity.com/sharedfiles/filedetails/?id=2818203002
 	LoadSurfNorm(&textures, "rock", FixPath(L"../../Assets/Textures/Surface/rock.png").c_str(), FixPath(L"../../Assets/Textures/Normal/rock_normals.png").c_str());
-	LoadSurfNorm(&textures, "saul", FixPath(L"../../Assets/Textures/Surface/saul.png").c_str(), FixPath(L"../../Assets/Textures/Normal/saulNorm.png").c_str());
+	LoadSurfNorm(&textures, "saul", FixPath(L"../../Assets/Textures/Surface/saul1.jpg").c_str(), FixPath(L"../../Assets/Textures/Normal/saulNorm1.png").c_str());
 	LoadSurfNorm(&textures, "cobble", FixPath(L"../../Assets/Textures/Surface/cobblestone.png").c_str(), FixPath(L"../../Assets/Textures/Normal/cobblestone_normals.png").c_str());
 	LoadSurfNorm(&textures, "cushion", FixPath(L"../../Assets/Textures/Surface/cushion.png").c_str(), FixPath(L"../../Assets/Textures/Normal/cushion_normals.png").c_str());
 	LoadSurfNorm(&textures, "tiles", FixPath(L"../../Assets/Textures/Surface/brokentiles.png").c_str(), FixPath(L"../../Assets/Textures/Normal/flat_normals.png").c_str());
@@ -396,9 +396,9 @@ void Game::Update(float deltaTime, float totalTime)
 			TreePop();
 		}
 		if (TreeNode("Lights")) {
-			LightNode("Light 0", &dir);
-			LightNode("Light 1", &pt);
-			LightNode("Light 2", &spot);
+			LightNode("Directional Light", &dir);
+			LightNode("Point Light", &pt);
+			LightNode("Spot Light", &spot);
 			TreePop();
 		}
 
