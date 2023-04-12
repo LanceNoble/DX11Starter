@@ -1,5 +1,5 @@
-SamplerState CubeSampler : register(s0);
-TextureCube Cube : register(t0);
+SamplerState CubeSampler : register(s1);
+TextureCube Cube : register(t4);
 
 
 struct SkyVertexToPixel

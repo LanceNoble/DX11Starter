@@ -68,6 +68,19 @@ Game::~Game()
 	ImGui::DestroyContext();
 }
 
+void Game::AddTextures(std::shared_ptr<Material> mat, const wchar_t* albedo, const wchar_t* normal, const wchar_t* roughness, const wchar_t* metalness)
+{
+	ComPtr<ID3D11ShaderResourceView> SRVs[4];
+	CreateWICTextureFromFile(device.Get(), context.Get(), albedo, nullptr, SRVs[0].GetAddressOf());
+	CreateWICTextureFromFile(device.Get(), context.Get(), normal, nullptr, SRVs[1].GetAddressOf());
+	CreateWICTextureFromFile(device.Get(), context.Get(), roughness, nullptr, SRVs[2].GetAddressOf());
+	CreateWICTextureFromFile(device.Get(), context.Get(), metalness, nullptr, SRVs[3].GetAddressOf());
+	mat->AddTextureSRV("Albedo", SRVs[0]);
+	mat->AddTextureSRV("NormalMap", SRVs[1]);
+	mat->AddTextureSRV("RoughnessMap", SRVs[2]);
+	mat->AddTextureSRV("MetalnessMap", SRVs[3]);
+}
+
 // --------------------------------------------------------
 // Called once per program, after Direct3D and the window
 // are initialized but before the game loop.
@@ -94,12 +107,11 @@ void Game::Init()
 
 	activeCam = 0;
 
-	// Initialize lights BEFORE loading shaders
+	// Initialize lights before loading shaders
 	dir = MakeDir(XMFLOAT3(0,0,-1), XMFLOAT3(.93f,.69f,.38f), 1);
-	pt = MakePoint(3, XMFLOAT3(0,-1,0), 1, XMFLOAT3(1,1,1));
-	spot = MakeSpot(XMFLOAT3(0,-1,0), 10, XMFLOAT3(0,5,0), 1, XMFLOAT3(.46f,.36f,1), XMConvertToRadians(30));
+	pt = MakePoint(3, XMFLOAT3(0,2,0), 1, XMFLOAT3(1,1,1));
+	spot = MakeSpot(XMFLOAT3(0,-1,0), 10, XMFLOAT3(2,5,0), 1, XMFLOAT3(.46f,.36f,1), XMConvertToRadians(30));
 
-	// NOW load shaders
 	vs = make_shared<SimpleVertexShader>(device, context, FixPath(L"VertexShader.cso").c_str());
 	ps = make_shared<SimplePixelShader>(device, context, FixPath(L"PixelShader.cso").c_str());
 	unsigned int lightSize = sizeof(Light);
@@ -109,33 +121,9 @@ void Game::Init()
 	skyVS = make_shared<SimpleVertexShader>(device, context, FixPath(L"SkyVS.cso").c_str());
 	skyPS = make_shared<SimplePixelShader>(device, context, FixPath(L"SkyPS.cso").c_str());
 
-	// Create the possible meshes our graphics engine can render 
-	meshes.insert({ "cube", make_shared<Mesh>(FixPath(L"../../Assets/Models/cube.obj").c_str(), device, context) });
-	meshes.insert({ "cylinder", make_shared<Mesh>(FixPath(L"../../Assets/Models/cylinder.obj").c_str(), device, context) });
-	meshes.insert({ "helix", make_shared<Mesh>(FixPath(L"../../Assets/Models/helix.obj").c_str(), device, context) });
-	meshes.insert({ "quad", make_shared<Mesh>(FixPath(L"../../Assets/Models/quad.obj").c_str(), device, context) });
-	meshes.insert({ "twoSideQuad", make_shared<Mesh>(FixPath(L"../../Assets/Models/quad_double_sided.obj").c_str(), device, context) });
 	meshes.insert({ "sphere", make_shared<Mesh>(FixPath(L"../../Assets/Models/sphere.obj").c_str(), device, context) });
-	meshes.insert({ "torus", make_shared<Mesh>(FixPath(L"../../Assets/Models/torus.obj").c_str(), device, context) });
+	meshes.insert({ "cube", make_shared<Mesh>(FixPath(L"../../Assets/Models/cube.obj").c_str(), device, context) });
 
-	// Load textures and create sampler state before creating materials
-	// Saul Goodman surface texture from https://knowyourmeme.com/memes/3d-saul-goodman
-	// Saul Goodman normal map from https://steamcommunity.com/sharedfiles/filedetails/?id=2818203002
-	LoadSurfNorm(&textures, "rock", FixPath(L"../../Assets/Textures/Surface/rock.png").c_str(), FixPath(L"../../Assets/Textures/Normal/rock_normals.png").c_str());
-	LoadSurfNorm(&textures, "saul", FixPath(L"../../Assets/Textures/Surface/saul1.jpg").c_str(), FixPath(L"../../Assets/Textures/Normal/saulNorm1.png").c_str());
-	LoadSurfNorm(&textures, "cobble", FixPath(L"../../Assets/Textures/Surface/cobblestone.png").c_str(), FixPath(L"../../Assets/Textures/Normal/cobblestone_normals.png").c_str());
-	LoadSurfNorm(&textures, "cushion", FixPath(L"../../Assets/Textures/Surface/cushion.png").c_str(), FixPath(L"../../Assets/Textures/Normal/cushion_normals.png").c_str());
-	LoadSurfNorm(&textures, "tiles", FixPath(L"../../Assets/Textures/Surface/brokentiles.png").c_str(), FixPath(L"../../Assets/Textures/Normal/flat_normals.png").c_str());
-	LoadSurfNorm(&textures, "rust", FixPath(L"../../Assets/Textures/Surface/rustymetal.png").c_str(), FixPath(L"../../Assets/Textures/Normal/flat_normals.png").c_str());
-
-	// CODE: Create materials to paint our entities' meshes with
-	XMFLOAT3 ambience = XMFLOAT3(0.1f, 0.1f, 0.25f);
-	mats.insert({ "orange", make_shared<Material>(XMFLOAT4(.72f, .25f, .05f, 1.0f), vs, ps, 0.0f, ambience) });
-	mats.insert({ "gray", make_shared<Material>(XMFLOAT4(1, 1, 1, 1), vs, ps, 0.0f, ambience) });
-	mats.insert({ "gold", make_shared<Material>(XMFLOAT4(1.0f, 0.84f, 0.0f, 1.0f), vs, ps, .9f, ambience) }); 
-	mats.insert({ "white", make_shared<Material>(XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), vs, ps, 0, ambience) }); 
-	mats.insert({ "black", make_shared<Material>(XMFLOAT4(0.7f, 0.7f, 0.7f, 0.7f), vs, ps, .9f, ambience) }); 
-	mats.insert({ "green", make_shared<Material>(XMFLOAT4(1, 1, 1, 1), vs, ps, 0.0f, ambience) }); 
 
 	D3D11_SAMPLER_DESC ssDesc;
 	ssDesc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
@@ -150,64 +138,52 @@ void Game::Init()
 	ssDesc.MipLODBias = 0.0f;
 	device->CreateSamplerState(&ssDesc, ss.GetAddressOf());
 
-	// Every texture needs a unique SRV
-	mats["orange"]->AddTextureSRV("SurfaceTexture", textures["rust"][0]);
-	mats["orange"]->AddTextureSRV("NormalMap", textures["rust"][1]);
-	mats["gray"]->AddTextureSRV("SurfaceTexture", textures["cobble"][0]);
-	mats["gray"]->AddTextureSRV("NormalMap", textures["cobble"][1]);
-	mats["gold"]->AddTextureSRV("SurfaceTexture", textures["rock"][0]);
-	mats["gold"]->AddTextureSRV("NormalMap", textures["rock"][1]);
-	mats["white"]->AddTextureSRV("SurfaceTexture", textures["saul"][0]);
-	mats["white"]->AddTextureSRV("NormalMap", textures["saul"][1]);
-	mats["black"]->AddTextureSRV("SurfaceTexture", textures["tiles"][0]);
-	mats["black"]->AddTextureSRV("NormalMap", textures["tiles"][1]);
-	mats["green"]->AddTextureSRV("SurfaceTexture", textures["cushion"][0]);
-	mats["green"]->AddTextureSRV("NormalMap", textures["cushion"][1]);
-	// CODE END
-	
-	for (auto& mat : mats) mats[mat.first]->AddSampler("BasicSampler", ss);
-
-	// CODE: Create Floor
-	int rows = sizeof(tiles) / sizeof(tiles[0]);
-	int cols = sizeof(tiles[0]) / sizeof(Ent);
-	for (int i = 0; i < rows; i++)
+	for (int i = 0; i < 7; i++) 
 	{
-		for (int j = 0; j < cols; j++)
-		{
-			tiles[i][j] = Ent(meshes["quad"], mats["gray"]);
-			tiles[i][j].GetTf()->SetPosition(i * 2.0f, -2.0f, j * 2.0f);
-			tiles[i][j].GetTf()->UpdateMatrices();
-		}
+		mats.push_back(make_shared<Material>(XMFLOAT4(1, 1, 1, 1), vs, ps));
+		mats[i]->AddSampler("Sampler", ss);
+		ents.push_back(Ent(meshes["sphere"], mats[i]));
+		ents[i].GetTf()->SetPosition(i, 0, 0);
+		ents[i].GetTf()->SetScale(0.25f,0.25f,0.25f);
 	}
-	// CODE END
 
-	// CODE: Saul Goodman
-	saulGoodman = Ent(meshes["cube"], mats["white"]);
-	saulGoodman.GetTf()->SetPosition(14, 5, 14);
+	AddTextures(mats[0], FixPath(L"../../Assets/Textures/AlbedoMaps/bronze_albedo.png").c_str(), 
+		FixPath(L"../../Assets/Textures/NormalMaps/bronze_normals.png").c_str(), 
+		FixPath(L"../../Assets/Textures/RoughnessMaps/bronze_roughness.png").c_str(), 
+		FixPath(L"../../Assets/Textures/MetalMaps/bronze_metal.png").c_str());
 
+	AddTextures(mats[1], FixPath(L"../../Assets/Textures/AlbedoMaps/cobblestone_albedo.png").c_str(), 
+		FixPath(L"../../Assets/Textures/NormalMaps/cobblestone_normals.png").c_str(), 
+		FixPath(L"../../Assets/Textures/RoughnessMaps/cobblestone_roughness.png").c_str(), 
+		FixPath(L"../../Assets/Textures/MetalMaps/cobblestone_metal.png").c_str());
 
-	ents.push_back(Ent(meshes["cube"], mats["gold"]));
-	ents.push_back(Ent(meshes["cylinder"], mats["orange"]));
-	ents.push_back(Ent(meshes["helix"], mats["black"]));
-	ents.push_back(Ent(meshes["quad"], mats["white"]));
-	ents.push_back(Ent(meshes["twoSideQuad"], mats["gray"]));
-	ents.push_back(Ent(meshes["sphere"], mats["green"]));
-	ents.push_back(Ent(meshes["torus"], mats["gold"]));
+	AddTextures(mats[2], FixPath(L"../../Assets/Textures/AlbedoMaps/floor_albedo.png").c_str(), 
+		FixPath(L"../../Assets/Textures/NormalMaps/floor_normals.png").c_str(), 
+		FixPath(L"../../Assets/Textures/RoughnessMaps/floor_roughness.png").c_str(), 
+		FixPath(L"../../Assets/Textures/MetalMaps/floor_metal.png").c_str());
 
-	// Minus 1 to exclude scaling our floor
-	for (int i = 0; i < ents.size(); i++) ents[i].GetTf()->SetScale(0.25, 0.25, 0.25);
-	
-	ents[0].GetTf()->SetPosition(0, 0, 0);
-	ents[1].GetTf()->SetPosition(1, 0, 0);
-	ents[2].GetTf()->SetPosition(2, 0, 0);
-	ents[3].GetTf()->SetPosition(3, 0, 0);
-	ents[4].GetTf()->SetPosition(4, 0, 0);
-	ents[5].GetTf()->SetPosition(5, 0, 0);
-	ents[6].GetTf()->SetPosition(6, 0, 0);
-	
+	AddTextures(mats[3], FixPath(L"../../Assets/Textures/AlbedoMaps/paint_albedo.png").c_str(), 
+		FixPath(L"../../Assets/Textures/NormalMaps/paint_normals.png").c_str(), 
+		FixPath(L"../../Assets/Textures/RoughnessMaps/paint_roughness.png").c_str(), 
+		FixPath(L"../../Assets/Textures/MetalMaps/paint_metals.png").c_str());
 
-	cams.push_back(make_shared<Cam>((float)windowWidth / windowHeight, XMFLOAT3(0, 1, -6), XMFLOAT3(), 70.0f));
-	cams.push_back(make_shared<Cam>((float)windowWidth / windowHeight, XMFLOAT3(0, 0, -4), XMFLOAT3()));
+	AddTextures(mats[4], FixPath(L"../../Assets/Textures/AlbedoMaps/rough_albedo.png").c_str(), 
+		FixPath(L"../../Assets/Textures/NormalMaps/rough_normals.png").c_str(), 
+		FixPath(L"../../Assets/Textures/RoughnessMaps/rough_roughness.png").c_str(), 
+		FixPath(L"../../Assets/Textures/MetalMaps/rough_metal.png").c_str());
+
+	AddTextures(mats[5], FixPath(L"../../Assets/Textures/AlbedoMaps/scratched_albedo.png").c_str(), 
+		FixPath(L"../../Assets/Textures/NormalMaps/scratched_normals.png").c_str(), 
+		FixPath(L"../../Assets/Textures/RoughnessMaps/scratched_roughness.png").c_str(), 
+		FixPath(L"../../Assets/Textures/MetalMaps/scratched_metal.png").c_str());
+
+	AddTextures(mats[6], FixPath(L"../../Assets/Textures/AlbedoMaps/wood_albedo.png").c_str(), 
+		FixPath(L"../../Assets/Textures/NormalMaps/wood_normals.png").c_str(), 
+		FixPath(L"../../Assets/Textures/RoughnessMaps/wood_roughness.png").c_str(), 
+		FixPath(L"../../Assets/Textures/MetalMaps/wood_metal.png").c_str());
+
+	cams.push_back(make_shared<Cam>((float)windowWidth / windowHeight, XMFLOAT3(0, 0, 3), XMFLOAT3(), 70.0f));
+	cams.push_back(make_shared<Cam>((float)windowWidth / windowHeight, XMFLOAT3(0, 0, 3), XMFLOAT3()));
 
 	// CODE: Initialize skybox
 	D3D11_RASTERIZER_DESC skyRSDesc = {};
@@ -225,24 +201,14 @@ void Game::Init()
 
 	// Can just reuse the sampler state for the textures (unless you want different settings)
 	sky = Sky(ss, skySRV, skyDSS, skyRS, meshes["cube"], skyVS, skyPS, device);
-	sky.CreateCubemap(FixPath(L"../../Assets/Textures/Sky/CloudsPink/right.png").c_str(),
-		FixPath(L"../../Assets/Textures/Sky/CloudsPink/left.png").c_str(),
-		FixPath(L"../../Assets/Textures/Sky/CloudsPink/up.png").c_str(),
-		FixPath(L"../../Assets/Textures/Sky/CloudsPink/down.png").c_str(),
-		FixPath(L"../../Assets/Textures/Sky/CloudsPink/front.png").c_str(),
-		FixPath(L"../../Assets/Textures/Sky/CloudsPink/back.png").c_str(),
+	sky.CreateCubemap(FixPath(L"../../Assets/Textures/Sky/right.png").c_str(),
+		FixPath(L"../../Assets/Textures/Sky/left.png").c_str(),
+		FixPath(L"../../Assets/Textures/Sky/up.png").c_str(),
+		FixPath(L"../../Assets/Textures/Sky/down.png").c_str(),
+		FixPath(L"../../Assets/Textures/Sky/front.png").c_str(),
+		FixPath(L"../../Assets/Textures/Sky/back.png").c_str(),
 		device,
 		context);
-	// CODE END
-}
-
-void Game::LoadSurfNorm(std::unordered_map<std::string, std::array<Microsoft::WRL::ComPtr<ID3D11ShaderResourceView>, 2>>* textures, std::string key, const wchar_t* surfPath, const wchar_t* normPath)
-{
-	ComPtr<ID3D11ShaderResourceView> s;
-	ComPtr<ID3D11ShaderResourceView> n;
-	CreateWICTextureFromFile(device.Get(), context.Get(), surfPath, nullptr, s.GetAddressOf());
-	CreateWICTextureFromFile(device.Get(), context.Get(), normPath, nullptr, n.GetAddressOf());
-	textures->insert({key, {s, n}});
 }
 
 Light Game::MakeDir(XMFLOAT3 dir, XMFLOAT3 color, float intensity)
@@ -345,10 +311,6 @@ void Game::LightNode(const char* label, Light* light) {
 // --------------------------------------------------------
 void Game::Update(float deltaTime, float totalTime)
 { 
-	// Minus 1 to exclude rotating the floor
-	for (int i = 0; i < ents.size(); i++) ents[i].GetTf()->Rotate(0, .25f * deltaTime, 0);
-	saulGoodman.GetTf()->Rotate(0, .25f * deltaTime, 0);
-
 	// The imgui stuff needs to be done first
 	// Feed fresh input data to ImGui
 	ImGuiIO& io = ImGui::GetIO();
@@ -370,9 +332,6 @@ void Game::Update(float deltaTime, float totalTime)
 	ImGui::ShowDemoWindow();
 	// imgui UI code happens after imgui frame setup
 
-	// I had to add two new fields to the Game class for this to work: timer and fps
-	// The timer and fps helps to control the ImGui::GetIO().Framerate
-	// So the fps gets updated less frequently and we don't get a bunch of flashing new number updates every 0.00001 seconds
 	ImGui::Begin("Basic Scene Info");
 	ImGui::Text("Window: %f x %f", ImGui::GetIO().DisplaySize.x, ImGui::GetIO().DisplaySize.y);
 	ImGui::DragInt("Active Cam", &activeCam, 1.0f, 0, 1);
@@ -384,15 +343,6 @@ void Game::Update(float deltaTime, float totalTime)
 	{
 		if (TreeNode("Scene Entities"))
 		{
-			//Node("Entity 0", &ents[0]);
-			//Node("Entity 1", &ents[1]);
-			//Node("Entity 2", &ents[2]);
-			//Node("Entity 3", &ents[3]);
-			//Node("Entity 4", &ents[4]);
-			//Node("Entity 5", &ents[5]);
-			//Node("Entity 6", &ents[6]);
-			//Node("Entity 7", &ents[7]);
-			//Node("Entity 8", &ents[8]);
 			TreePop();
 		}
 		if (TreeNode("Lights")) {
@@ -413,8 +363,6 @@ void Game::Update(float deltaTime, float totalTime)
 	ps->SetData("spot", &spot, lightSize);
 
 	for (int i = 0; i < ents.size(); i++) ents[i].GetTf()->UpdateMatrices();
-	
-	saulGoodman.GetTf()->UpdateMatrices();
 
 	cams[activeCam]->Move(deltaTime);
 	// Example input checking: Quit if the escape key is pressed
@@ -444,24 +392,11 @@ void Game::Draw(float deltaTime, float totalTime)
 	// - These steps are generally repeated for EACH object you draw
 	// - Other Direct3D calls will also be necessary to do more complex things
 	{
-		saulGoodman.GetMat()->GetVertexShader()->SetShader();
-		saulGoodman.GetMat()->GetPixelShader()->SetShader();
-		saulGoodman.Draw(cams[activeCam]);
-
 		for (int i = 0; i < ents.size(); i++) {
 			// set shader before drawing entity since most likely each entity will want to be drawn via a different shader instead of the same global one
 			ents[i].GetMat()->GetVertexShader()->SetShader();
 			ents[i].GetMat()->GetPixelShader()->SetShader();
 			ents[i].Draw(cams[activeCam]);
-		}
-		for (int i = 0; i < sizeof(tiles) / sizeof(tiles[0]); i++)
-		{
-			for (int j = 0; j < sizeof(tiles[0]) / sizeof(Ent); j++)
-			{
-				tiles[i][j].GetMat()->GetVertexShader()->SetShader();
-				tiles[i][j].GetMat()->GetPixelShader()->SetShader();
-				tiles[i][j].Draw(cams[activeCam]);
-			}
 		}
 	}
 

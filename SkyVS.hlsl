@@ -1,6 +1,6 @@
 #include "Lighting.hlsli"
 
-cbuffer ExternalData : register(b0)
+cbuffer ExternalData : register(b2)
 {
 	// declare variables that hold the external data (data sent in from c++)
 	// order at which they're declared matters (they define where in the buffer these variables will get their data)
