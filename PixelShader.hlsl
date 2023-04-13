@@ -1,75 +1,35 @@
 #include "Lighting.hlsli"
 
-SamplerState BasicSampler : register(s0); // "s" registers for samplers
-Texture2D SurfaceTexture : register(t0); // "t" registers for textures
+Texture2D Albedo : register(t0);
 Texture2D NormalMap : register(t1);
-
+Texture2D RoughnessMap : register(t2);
+Texture2D MetalnessMap : register(t3);
+SamplerState Sampler : register(s0);
 
 //must set proper compiler options for every new shader added
-cbuffer ExternalData : register(b0)
+cbuffer ExternalData : register(b1)
 {
 	// declare variables that hold the external data (data sent in from c++)
 	// order at which they're declared matters (they define where in the buffer these variables will get their data)
 	float4 tint;
 	float3 camPos;
-    float roughness;
-    float3 ambience;
     Light dir;
     Light pt;
     Light spot;
 }
 
-// Cut the specular if the diffuse contribution is zero
-// - any() returns 1 if any component of the param is non-zero
-// - In this case, diffuse is a single float value
-// - Meaning any() returns 1 if diffuse itself is non-zero
-// - In other words:
-// - If the diffuse amount is 0, any(diffuse) returns 0
-// - If the diffuse amount is != 0, any(diffuse) returns 1
-// - So when diffuse is 0, specular becomes 0
-float cutSpec(float spec, float diffuse)
-{
-    spec *= any(diffuse);
-    return spec;
-}
-
-// Lighting equation
-// Calculates the dot product between the normalized surface normal of the pixel
-// and the normalized + negated direction of a light, then clamps the result between
-// 0 and 1 to find the appropriate diffusal amount
-float DiffuseBRDF(float3 normal, float3 lightDir) {
-	return saturate(dot(normal,normalize(-lightDir)));
-}
-
-// Lighting equation
-// Calculates a reflection vector from the direction of the light and the normalized surface normal
-// Normalizes the vector pointing to the camera from the pixel's world position
-// Calculates the dot product between the two vectors, clamps the result between 0 and 1, and
-// raises it to a specular exponent power determined by the entity's material's roughness
-// to find the appropriate specular amount
-float SpecularBRDF(float3 normal, float3 lightDir, float3 pixWorldPos, float roughness) {
-    float specular = 0;
-    
-    // Conditional accounts for the spec exp being 0 and giving a result of 1, which causes the spec to be pure white
-    if (MAX_SPECULAR_EXPONENT > 0.05)
-        specular = pow(saturate(dot(reflect(normalize(lightDir), normal), normalize(camPos - pixWorldPos))), (1.0f - roughness) * MAX_SPECULAR_EXPONENT);
-    
-    return specular;
-}
-
 // Calculate light amount from one directional light
-float3 HandleDirLight(Light dirLight, VertexToPixel input)
+float3 HandleDirLight(Light dirLight, VertexToPixel input, float metalness, float3 specColor, float3 surfaceColor, float roughness)
 {
-    float diffAm = DiffuseBRDF(input.normal, dirLight.Direction);
-    float specAm = SpecularBRDF(input.normal, dirLight.Direction, input.worldPosition, roughness);
+    float diffAm = DiffusePBR(input.normal, -dirLight.Direction);
+    float3 F;
+    float specAm = MicrofacetBRDF(input.normal, normalize(-dirLight.Direction), normalize(camPos - input.worldPosition), roughness, specColor, F);
+    float3 balancedDiff = DiffuseEnergyConserve(diffAm, F, metalness);
     
-    cutSpec(specAm, diffAm);
-    
-    // To tint the specular, surround "diffAm + specAm" in another inner set of parentheses
-    return (dirLight.Color * (diffAm + specAm)) * dirLight.Intensity;
+    return (balancedDiff * surfaceColor + specAm) * dirLight.Intensity * dirLight.Color;
 }
 
-// Make point lights weaken with distance
+// Make point and spot lights weaken with distance
 float Attenuate(Light light, float3 worldPos)
 {
     float dist = distance(light.Position, worldPos);
@@ -79,29 +39,32 @@ float Attenuate(Light light, float3 worldPos)
 }
 
 // Calculate light amount from one point light
-float3 HandlePoint(Light pointLight, VertexToPixel input)
+float3 HandlePoint(Light pointLight, VertexToPixel input, float metalness, float3 specColor, float3 surfaceColor, float roughness)
 {
-    float3 direction = normalize(input.worldPosition - pointLight.Position);
-    float diffAm = DiffuseBRDF(input.normal, direction);
-    float specAm = SpecularBRDF(input.normal, direction, input.worldPosition, roughness);
-    cutSpec(specAm, diffAm);
-    return ((pointLight.Color * (diffAm + specAm)) * Attenuate(pointLight, input.worldPosition)) * pointLight.Intensity;
+    float3 direction = normalize(pointLight.Position - input.worldPosition);
+    
+    float diffAm = DiffusePBR(input.normal, direction);
+    float3 F;
+    float specAm = MicrofacetBRDF(input.normal, normalize(direction), normalize(camPos - input.worldPosition), roughness, specColor, F);
+    float3 balancedDiff = DiffuseEnergyConserve(diffAm, F, metalness);
+    
+    return (balancedDiff * surfaceColor + specAm) * pointLight.Intensity * pointLight.Color * Attenuate(pointLight, input.worldPosition);
 }
 
-float3 HandleSpot(Light spot, VertexToPixel input)
+float3 HandleSpot(Light spot, VertexToPixel input, float metalness, float3 specColor, float3 surfaceColor, float roughness)
 {
-    // Attempting spot calculation from https://ogldev.org/www/tutorial21/tutorial21.html
-    float3 dir = normalize(input.worldPosition - spot.Position);
-    float diffAm = DiffuseBRDF(input.normal, dir);
-    float specAm = SpecularBRDF(input.normal, dir, input.worldPosition, roughness);
-    cutSpec(specAm, diffAm);
+    float3 dir = normalize(spot.Position - input.worldPosition);
     
-    // https://stackoverflow.com/questions/338762/how-do-you-calculate-the-angle-between-two-normals-in-glsl
+    float diffAm = DiffusePBR(input.normal, dir);
+    float3 F;
+    float specAm = MicrofacetBRDF(input.normal, normalize(dir), normalize(camPos - input.worldPosition), roughness, specColor, F);
+    float3 balancedDiff = DiffuseEnergyConserve(diffAm, F, metalness);
+    
     float angleBtwn = cos(spot.SpotFalloff / 2);
     float dotProduct = dot(normalize(spot.Direction), dir);
-    if (dotProduct > angleBtwn)
+    if (dotProduct < angleBtwn)
     {
-        return ((spot.Color * (diffAm + specAm)) * Attenuate(spot, input.worldPosition)) * spot.Intensity;
+        return (balancedDiff * surfaceColor + specAm) * spot.Intensity * spot.Color * Attenuate(spot, input.worldPosition);
     }
     return float3(0,0,0);
 }
@@ -118,10 +81,17 @@ float3 HandleSpot(Light spot, VertexToPixel input)
 // --------------------------------------------------------
 float4 main(VertexToPixel input) : SV_TARGET
 {
-    float3 unpackedNormal = NormalMap.Sample(BasicSampler, input.uv).rgb * 2 - 1;
-    unpackedNormal = normalize(unpackedNormal); // Don't forget to normalize (because of rasterizer interpolation)
-
-    float3 surfaceColor = SurfaceTexture.Sample(BasicSampler, input.uv).rgb;
+    float3 unpackedNormal = NormalMap.Sample(Sampler, input.uv).rgb * 2 - 1;
+    unpackedNormal = normalize(unpackedNormal);
+    float3 albedoColor = pow(Albedo.Sample(Sampler, input.uv).rgb, 2.2f);
+    float roughness = RoughnessMap.Sample(Sampler, input.uv).r;
+    float metalness = MetalnessMap.Sample(Sampler, input.uv).r;
+    
+    // Specular color determination
+    // Assume albedo texture is actually holding specular color where metalness == 1
+    // Note the use oflerp here - metal is generally 0 or 1, but might be in between
+    // because of linear texture sampling, so we lerp the specular color to match
+    float3 specColor = lerp(F0_NON_METAL, albedoColor.rgb, metalness);
     
     // Gram-Schmidt orthonormalize process for making the normal and tanget orthogonal
 	// must re-normalize any interpolated vectors that were produced from rasterizer
@@ -135,11 +105,9 @@ float4 main(VertexToPixel input) : SV_TARGET
     // Assumes that input.normal is the normal later in the shader
     input.normal = mul(unpackedNormal, TBN); // Note the multiplication order
     
-    float3 totalLight = HandleDirLight(dir, input);
-    totalLight += HandlePoint(pt, input);
-    totalLight += HandleSpot(spot, input);
+    float3 totalLight = HandleDirLight(dir, input, metalness, specColor, albedoColor, roughness);
+    totalLight += HandlePoint(pt, input, metalness, specColor, albedoColor, roughness);
+    totalLight += HandleSpot(spot, input, metalness, specColor, albedoColor, roughness);
 	
-    float3 finalPixelColor = surfaceColor * tint.rgb * (ambience + totalLight);
-    
-    return float4(finalPixelColor, 1);
+    return float4(pow(albedoColor * tint.rgb * totalLight, 1.0f / 2.2f), 1);
 }

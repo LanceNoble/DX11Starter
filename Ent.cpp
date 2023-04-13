@@ -53,8 +53,6 @@ void Ent::Draw(shared_ptr<Cam> cam)
 	shared_ptr<SimplePixelShader> ps = mat->GetPixelShader();
 	ps->SetFloat4("tint", mat->GetColorTint());
 	ps->SetFloat3("camPos", cam->GetPos());
-	ps->SetFloat("roughness", mat->GetRoughness());
-	ps->SetFloat3("ambience", mat->GetAmbience());
 	ps->CopyAllBufferData();
 
 	mat->PrepareMaterial();
