@@ -96,8 +96,8 @@ void Game::Init()
 
 	// Initialize lights BEFORE loading shaders
 	dir = MakeDir(XMFLOAT3(0,0,-1), XMFLOAT3(.93f,.69f,.38f), 1);
-	pt = MakePoint(3, XMFLOAT3(0,-1,0), 1, XMFLOAT3(1,1,1));
-	spot = MakeSpot(XMFLOAT3(0,-1,0), 10, XMFLOAT3(0,5,0), 1, XMFLOAT3(.46f,.36f,1), XMConvertToRadians(30));
+	pt = MakePoint(3, XMFLOAT3(2,0,0), 1, XMFLOAT3(1,1,1));
+	spot = MakeSpot(XMFLOAT3(0,-1,0), 10, XMFLOAT3(14,3,14), 1, XMFLOAT3(.46f,.36f,1), XMConvertToRadians(30));
 
 	// NOW load shaders
 	vs = make_shared<SimpleVertexShader>(device, context, FixPath(L"VertexShader.cso").c_str());
