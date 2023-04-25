@@ -46,6 +46,19 @@ class Game: public DXCore {
 		std::vector<std::shared_ptr<Material>> mats;
 		Microsoft::WRL::ComPtr<ID3D11SamplerState> ss;
 		std::vector<Ent> ents;
+		Ent floor[15][15];
 		std::vector<std::shared_ptr<Cam>> cams;
 		int activeCam;
+		int ent6Dir;
+		int ent4Dir;
+
+		// Shadows
+		std::shared_ptr<SimpleVertexShader> shadowVS;
+		Microsoft::WRL::ComPtr<ID3D11DepthStencilView> shadowDSV;
+		Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> shadowSRV;
+		Microsoft::WRL::ComPtr<ID3D11RasterizerState> shadowRasterizer;
+		Microsoft::WRL::ComPtr<ID3D11SamplerState> shadowSampler;
+		DirectX::XMFLOAT4X4 shadowViewMatrix;
+		DirectX::XMFLOAT4X4 shadowProjectionMatrix;
+		int shadowMapResolution; // should be a power of 2
 };

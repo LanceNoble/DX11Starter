@@ -4,7 +4,9 @@ Texture2D Albedo : register(t0);
 Texture2D NormalMap : register(t1);
 Texture2D RoughnessMap : register(t2);
 Texture2D MetalnessMap : register(t3);
+Texture2D ShadowMap : register(t4);
 SamplerState Sampler : register(s0);
+SamplerComparisonState ShadowSampler : register(s1);
 
 //must set proper compiler options for every new shader added
 cbuffer ExternalData : register(b1)
@@ -14,8 +16,8 @@ cbuffer ExternalData : register(b1)
 	float4 tint;
 	float3 camPos;
     Light dir;
-    Light pt;
-    Light spot;
+    //Light pt;
+    //Light spot;
 }
 
 // Calculate light amount from one directional light
@@ -81,6 +83,12 @@ float3 HandleSpot(Light spot, VertexToPixel input, float metalness, float3 specC
 // --------------------------------------------------------
 float4 main(VertexToPixel input) : SV_TARGET
 {
+    input.shadowMapPos /= input.shadowMapPos.w;
+    float2 shadowUV = input.shadowMapPos.xy * 0.5f + 0.5f;
+    shadowUV.y = 1 - shadowUV.y; 
+    float distToLight = input.shadowMapPos.z;
+    float shadowAmount = ShadowMap.SampleCmpLevelZero(ShadowSampler,shadowUV,distToLight).r;
+    
     float3 unpackedNormal = NormalMap.Sample(Sampler, input.uv).rgb * 2 - 1;
     unpackedNormal = normalize(unpackedNormal);
     float3 albedoColor = pow(Albedo.Sample(Sampler, input.uv).rgb, 2.2f);
@@ -105,9 +113,10 @@ float4 main(VertexToPixel input) : SV_TARGET
     // Assumes that input.normal is the normal later in the shader
     input.normal = mul(unpackedNormal, TBN); // Note the multiplication order
     
-    float3 totalLight = HandleDirLight(dir, input, metalness, specColor, albedoColor, roughness);
-    totalLight += HandlePoint(pt, input, metalness, specColor, albedoColor, roughness);
-    totalLight += HandleSpot(spot, input, metalness, specColor, albedoColor, roughness);
+    float3 totalLight;
+    totalLight = HandleDirLight(dir, input, metalness, specColor, albedoColor, roughness) * (shadowAmount + 0.2);
+    //totalLight += HandlePoint(pt, input, metalness, specColor, albedoColor, roughness);
+    //totalLight += HandleSpot(spot, input, metalness, specColor, albedoColor, roughness);
 	
     return float4(pow(albedoColor * tint.rgb * totalLight, 1.0f / 2.2f), 1);
 }

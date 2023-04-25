@@ -79,6 +79,7 @@ void Game::AddTextures(std::shared_ptr<Material> mat, const wchar_t* albedo, con
 	mat->AddTextureSRV("NormalMap", SRVs[1]);
 	mat->AddTextureSRV("RoughnessMap", SRVs[2]);
 	mat->AddTextureSRV("MetalnessMap", SRVs[3]);
+	mat->AddTextureSRV("ShadowMap", shadowSRV);
 }
 
 // --------------------------------------------------------
@@ -106,11 +107,19 @@ void Game::Init()
 	ImGui::StyleColorsDark();
 
 	activeCam = 0;
+	ent6Dir = 1;
+	ent4Dir = 1;
+	shadowMapResolution = 2048;
 
 	// Initialize lights before loading shaders
-	dir = MakeDir(XMFLOAT3(0,0,-1), XMFLOAT3(.93f,.69f,.38f), 1);
-	pt = MakePoint(3, XMFLOAT3(0,2,0), 1, XMFLOAT3(1,1,1));
-	spot = MakeSpot(XMFLOAT3(0,-1,0), 10, XMFLOAT3(2,5,0), 1, XMFLOAT3(.46f,.36f,1), XMConvertToRadians(30));
+	//dir = MakeDir(XMFLOAT3(0,0,-1), XMFLOAT3(.93f,.69f,.38f), 1);
+	XMFLOAT3 dirOri = XMFLOAT3(0, -1, -0.5f);
+	XMVECTOR dirOriMath = XMLoadFloat3(&dirOri);
+	XMVector3Normalize(dirOriMath);
+	XMStoreFloat3(&dirOri, dirOriMath);
+	dir = MakeDir(dirOri, XMFLOAT3(1,1,1), 1);
+	//pt = MakePoint(3, XMFLOAT3(0,2,0), 1, XMFLOAT3(1,1,1));
+	//spot = MakeSpot(XMFLOAT3(0,-1,0), 10, XMFLOAT3(2,5,0), 1, XMFLOAT3(.46f,.36f,1), XMConvertToRadians(30));
 
 	vs = make_shared<SimpleVertexShader>(device, context, FixPath(L"VertexShader.cso").c_str());
 	ps = make_shared<SimplePixelShader>(device, context, FixPath(L"PixelShader.cso").c_str());
@@ -120,9 +129,67 @@ void Game::Init()
 	ps->SetData("spot", &spot, lightSize);
 	skyVS = make_shared<SimpleVertexShader>(device, context, FixPath(L"SkyVS.cso").c_str());
 	skyPS = make_shared<SimplePixelShader>(device, context, FixPath(L"SkyPS.cso").c_str());
+	shadowVS = make_shared<SimpleVertexShader>(device, context, FixPath(L"Shadow.cso").c_str());
 
 	meshes.insert({ "sphere", make_shared<Mesh>(FixPath(L"../../Assets/Models/sphere.obj").c_str(), device, context) });
 	meshes.insert({ "cube", make_shared<Mesh>(FixPath(L"../../Assets/Models/cube.obj").c_str(), device, context) });
+	meshes.insert({ "helix", make_shared<Mesh>(FixPath(L"../../Assets/Models/helix.obj").c_str(), device, context) });
+
+	// CODE: Shadow stuff
+	D3D11_SAMPLER_DESC shadowSampDesc = {};
+	shadowSampDesc.Filter = D3D11_FILTER_COMPARISON_MIN_MAG_MIP_LINEAR;
+	shadowSampDesc.ComparisonFunc = D3D11_COMPARISON_LESS;
+	shadowSampDesc.AddressU = D3D11_TEXTURE_ADDRESS_BORDER;
+	shadowSampDesc.AddressV = D3D11_TEXTURE_ADDRESS_BORDER;
+	shadowSampDesc.AddressW = D3D11_TEXTURE_ADDRESS_BORDER;
+	shadowSampDesc.BorderColor[0] = 1.0f;
+	device->CreateSamplerState(&shadowSampDesc, &shadowSampler);
+
+	D3D11_RASTERIZER_DESC shadowRastDesc = {};
+	shadowRastDesc.FillMode = D3D11_FILL_SOLID;
+	shadowRastDesc.CullMode = D3D11_CULL_BACK;
+	shadowRastDesc.DepthClipEnable = true;
+	shadowRastDesc.DepthBias = 1000; 
+	shadowRastDesc.SlopeScaledDepthBias = 1.0f; 
+	device->CreateRasterizerState(&shadowRastDesc, &shadowRasterizer);
+
+	D3D11_TEXTURE2D_DESC shadowDesc = {};
+	shadowDesc.Width = shadowMapResolution; 
+	shadowDesc.Height = shadowMapResolution;
+	shadowDesc.ArraySize = 1;
+	shadowDesc.BindFlags = D3D11_BIND_DEPTH_STENCIL | D3D11_BIND_SHADER_RESOURCE;
+	shadowDesc.CPUAccessFlags = 0;
+	shadowDesc.Format = DXGI_FORMAT_R32_TYPELESS;
+	shadowDesc.MipLevels = 1;
+	shadowDesc.MiscFlags = 0;
+	shadowDesc.SampleDesc.Count = 1;
+	shadowDesc.SampleDesc.Quality = 0;
+	shadowDesc.Usage = D3D11_USAGE_DEFAULT;
+	Microsoft::WRL::ComPtr<ID3D11Texture2D> shadowTexture;
+	device->CreateTexture2D(&shadowDesc, 0, shadowTexture.GetAddressOf());
+
+	D3D11_DEPTH_STENCIL_VIEW_DESC shadowDSDesc = {};
+	shadowDSDesc.Format = DXGI_FORMAT_D32_FLOAT;
+	shadowDSDesc.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D;
+	shadowDSDesc.Texture2D.MipSlice = 0;
+	device->CreateDepthStencilView(shadowTexture.Get(), &shadowDSDesc, shadowDSV.GetAddressOf());
+
+	D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+	srvDesc.Format = DXGI_FORMAT_R32_FLOAT;
+	srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+	srvDesc.Texture2D.MipLevels = 1;
+	srvDesc.Texture2D.MostDetailedMip = 0;
+	device->CreateShaderResourceView(shadowTexture.Get(), &srvDesc, shadowSRV.GetAddressOf());
+
+	XMVECTOR dirLightDirMath = XMLoadFloat3(&dir.Direction);
+	XMMATRIX lightView = XMMatrixLookToLH(-dirLightDirMath * 20, dirLightDirMath, XMVectorSet(0, 1, 0, 0));
+	XMStoreFloat4x4(&shadowViewMatrix, lightView);
+
+	float lightProjectionSize = 15.0f; // If shadows get cut off, increase this variable
+	XMMATRIX lightProjection = XMMatrixOrthographicLH(lightProjectionSize, lightProjectionSize, 1.0f, 100.0f);
+	XMStoreFloat4x4(&shadowProjectionMatrix, lightProjection);
+
+	// CODE END
 
 
 	D3D11_SAMPLER_DESC ssDesc;
@@ -138,13 +205,28 @@ void Game::Init()
 	ssDesc.MipLODBias = 0.0f;
 	device->CreateSamplerState(&ssDesc, ss.GetAddressOf());
 
-	for (int i = 0; i < 7; i++) 
+	for (int i = 0; i < 7; i++)
 	{
 		mats.push_back(make_shared<Material>(XMFLOAT4(1, 1, 1, 1), vs, ps));
 		mats[i]->AddSampler("Sampler", ss);
-		ents.push_back(Ent(meshes["sphere"], mats[i]));
-		ents[i].GetTf()->SetPosition(i, 0, 0);
+		mats[i]->AddSampler("ShadowSampler", shadowSampler);
+		if (i % 3 == 0) ents.push_back(Ent(meshes["sphere"], mats[i]));
+		else if (i % 2 == 0) ents.push_back(Ent(meshes["cube"], mats[i]));
+		else ents.push_back(Ent(meshes["helix"], mats[i]));
+		ents[i].GetTf()->SetPosition(i, 1, 0);
 		ents[i].GetTf()->SetScale(0.25f,0.25f,0.25f);
+	}
+
+	int rows = sizeof(floor) / sizeof(floor[0]);
+	int cols = sizeof(floor[0]) / sizeof(Ent);
+	for (int i = 0; i < rows; i++)
+	{
+		for (int j = 0; j < cols; j++)
+		{
+			floor[i][j] = Ent(meshes["cube"], mats[6]);
+			floor[i][j].GetTf()->SetPosition((i * 2.0f) - 10, -2.0f, (j * 2.0f) - 10);
+			floor[i][j].GetTf()->UpdateMatrices();
+		}
 	}
 
 	AddTextures(mats[0], FixPath(L"../../Assets/Textures/AlbedoMaps/bronze_albedo.png").c_str(), 
@@ -182,8 +264,8 @@ void Game::Init()
 		FixPath(L"../../Assets/Textures/RoughnessMaps/wood_roughness.png").c_str(), 
 		FixPath(L"../../Assets/Textures/MetalMaps/wood_metal.png").c_str());
 
-	cams.push_back(make_shared<Cam>((float)windowWidth / windowHeight, XMFLOAT3(0, 0, 3), XMFLOAT3(), 70.0f));
-	cams.push_back(make_shared<Cam>((float)windowWidth / windowHeight, XMFLOAT3(0, 0, 3), XMFLOAT3()));
+	cams.push_back(make_shared<Cam>((float)windowWidth / windowHeight, XMFLOAT3(3, 0, 5), XMFLOAT3(0, XM_PI, 0), 70.0f));
+	cams.push_back(make_shared<Cam>((float)windowWidth / windowHeight, XMFLOAT3(3, 0, 5), XMFLOAT3(0, XM_PI, 0)));
 
 	// CODE: Initialize skybox
 	D3D11_RASTERIZER_DESC skyRSDesc = {};
@@ -338,6 +420,7 @@ void Game::Update(float deltaTime, float totalTime)
 	ImGui::Text("Cam Pos: %f, %f, %f", cams[activeCam]->GetPos().x, cams[activeCam]->GetPos().y, cams[activeCam]->GetPos().z);
 	ImGui::Text("Cam FOV: %f", cams[activeCam]->GetFOV());
 	ImGui::Text("Cam Aspect Ratio: %f", cams[activeCam]->GetAspRat());
+	ImGui::Image(shadowSRV.Get(), ImVec2(512, 512));
 
 	if (CollapsingHeader("Inspector"))
 	{
@@ -355,6 +438,18 @@ void Game::Update(float deltaTime, float totalTime)
 	}
 
 	ImGui::End();
+
+
+	if (ents[6].GetTf()->GetPosition().z > 2) ent6Dir = -1;
+	else if (ents[6].GetTf()->GetPosition().z < -2) ent6Dir = 1;
+	ents[6].GetTf()->MoveAbsolute(0, 0, ent6Dir * deltaTime);
+
+	ents[5].GetTf()->Rotate(0, deltaTime, 0);
+
+	if (ents[4].GetTf()->GetPosition().y > 2) ent4Dir = -1;
+	else if (ents[4].GetTf()->GetPosition().y < 0) ent4Dir = 1;
+	ents[4].GetTf()->MoveAbsolute(0, ent4Dir * deltaTime, 0);
+	
 
 
 	unsigned int lightSize = sizeof(Light);
@@ -376,6 +471,49 @@ void Game::Update(float deltaTime, float totalTime)
 void Game::Draw(float deltaTime, float totalTime)
 {
 
+	// CODE: Render fresh info to the shadow map
+	context->RSSetState(shadowRasterizer.Get());
+
+	context->ClearDepthStencilView(shadowDSV.Get(), D3D11_CLEAR_DEPTH, 1.0f, 0);
+	ID3D11RenderTargetView* nullRTV{};
+	context->OMSetRenderTargets(1, &nullRTV, shadowDSV.Get());
+	context->PSSetShader(0, 0, 0);
+	D3D11_VIEWPORT viewport = {};
+	viewport.Width = (float)shadowMapResolution;
+	viewport.Height = (float)shadowMapResolution;
+	viewport.MaxDepth = 1.0f;
+	context->RSSetViewports(1, &viewport);
+
+	shadowVS->SetShader();
+	shadowVS->SetMatrix4x4("view", shadowViewMatrix);
+	shadowVS->SetMatrix4x4("projection", shadowProjectionMatrix);
+
+	for (auto& e : ents)
+	{
+		shadowVS->SetMatrix4x4("world", e.GetTf()->GetWorldMatrix());
+		shadowVS->CopyAllBufferData();
+		// Draw the mesh directly to avoid the entity's material
+		e.GetMesh()->Draw();
+	}
+
+	for (int i = 0; i < sizeof(floor) / sizeof(floor[0]); i++)
+	{
+		for (int j = 0; j < sizeof(floor[0]) / sizeof(Ent); j++)
+		{
+			shadowVS->SetMatrix4x4("world", floor[i][j].GetTf()->GetWorldMatrix());
+			shadowVS->CopyAllBufferData();
+			floor[i][j].GetMesh()->Draw();
+		}
+	}
+
+	// change rendering pipeline settings back to normal
+	context->RSSetState(0);
+	viewport.Width = (float)this->windowWidth;
+	viewport.Height = (float)this->windowHeight;
+	context->RSSetViewports(1, &viewport);
+	context->OMSetRenderTargets(1, backBufferRTV.GetAddressOf(), depthBufferDSV.Get());
+	// CODE END
+
 	// Frame START
 	// - These things should happen ONCE PER FRAME
 	// - At the beginning of Game::Draw() before drawing *anything*
@@ -388,15 +526,33 @@ void Game::Draw(float deltaTime, float totalTime)
 		context->ClearDepthStencilView(depthBufferDSV.Get(), D3D11_CLEAR_DEPTH, 1.0f, 0);
 	}
 
+	//ps->SetShaderResourceView("ShadowMap", shadowSRV);
+	//ps->SetSamplerState("ShadowSampler", shadowSampler);
+
 	// DRAW geometry
 	// - These steps are generally repeated for EACH object you draw
 	// - Other Direct3D calls will also be necessary to do more complex things
 	{
 		for (int i = 0; i < ents.size(); i++) {
+			
+			vs->SetMatrix4x4("lightView", shadowViewMatrix);
+			vs->SetMatrix4x4("lightProjection", shadowProjectionMatrix);
 			// set shader before drawing entity since most likely each entity will want to be drawn via a different shader instead of the same global one
 			ents[i].GetMat()->GetVertexShader()->SetShader();
 			ents[i].GetMat()->GetPixelShader()->SetShader();
 			ents[i].Draw(cams[activeCam]);
+		}
+
+		for (int i = 0; i < sizeof(floor) / sizeof(floor[0]); i++)
+		{
+			for (int j = 0; j < sizeof(floor[0]) / sizeof(Ent); j++)
+			{
+				//ps->SetShaderResourceView("ShadowMap", shadowSRV);
+				//ps->SetSamplerState("ShadowSampler", shadowSampler);
+				floor[i][j].GetMat()->GetVertexShader()->SetShader();
+				floor[i][j].GetMat()->GetPixelShader()->SetShader();
+				floor[i][j].Draw(cams[activeCam]);
+			}
 		}
 	}
 
@@ -423,4 +579,5 @@ void Game::Draw(float deltaTime, float totalTime)
 		// Must re-bind buffers after presenting, as they become unbound
 		context->OMSetRenderTargets(1, backBufferRTV.GetAddressOf(), depthBufferDSV.Get());
 	}
+
 }

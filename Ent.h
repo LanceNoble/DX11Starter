@@ -17,6 +17,7 @@ public:
 	Ent();
 	Ent(std::shared_ptr<Mesh>, std::shared_ptr<Material>);
 	Transform* GetTf();
+	std::shared_ptr<Mesh> GetMesh();
 	std::shared_ptr<Material> GetMat();
 	void Draw(std::shared_ptr<Cam>);
 };

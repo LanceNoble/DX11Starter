@@ -31,6 +31,11 @@ Transform* Ent::GetTf()
 	return &tf;
 }
 
+std::shared_ptr<Mesh> Ent::GetMesh()
+{
+	return mesh;
+}
+
 /// <returns>This ent's material</returns>
 std::shared_ptr<Material> Ent::GetMat()
 {

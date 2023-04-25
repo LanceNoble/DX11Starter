@@ -16,6 +16,8 @@ cbuffer ExternalData : register(b0)
 	matrix view;
 	matrix proj;
     matrix worldIT;
+    matrix lightView;
+    matrix lightProjection;
 }
 
 
@@ -32,6 +34,9 @@ VertexToPixel main( VertexShaderInput input )
 	// Set up output struct
 	VertexToPixel output;
 
+    matrix shadowWVP = mul(lightProjection, mul(lightView, world));
+    output.shadowMapPos = mul(shadowWVP, float4(input.localPosition, 1.0f));
+	
 	// Here we're essentially passing the input position directly through to the next
 	// stage (rasterizer), though it needs to be a 4-component vector now.  
 	// - To be considered within the bounds of the screen, the X and Y components 
