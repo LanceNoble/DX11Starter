@@ -25,7 +25,7 @@ float3 HandleDirLight(Light dirLight, VertexToPixel input, float metalness, floa
 {
     float diffAm = DiffusePBR(input.normal, -dirLight.Direction);
     float3 F;
-    float specAm = MicrofacetBRDF(input.normal, normalize(-dirLight.Direction), normalize(camPos - input.worldPosition), roughness, specColor, F);
+    float3 specAm = MicrofacetBRDF(input.normal, normalize(-dirLight.Direction), normalize(camPos - input.worldPosition), roughness, specColor, F);
     float3 balancedDiff = DiffuseEnergyConserve(diffAm, F, metalness);
     
     return (balancedDiff * surfaceColor + specAm) * dirLight.Intensity * dirLight.Color;
@@ -47,7 +47,7 @@ float3 HandlePoint(Light pointLight, VertexToPixel input, float metalness, float
     
     float diffAm = DiffusePBR(input.normal, direction);
     float3 F;
-    float specAm = MicrofacetBRDF(input.normal, normalize(direction), normalize(camPos - input.worldPosition), roughness, specColor, F);
+    float3 specAm = MicrofacetBRDF(input.normal, normalize(direction), normalize(camPos - input.worldPosition), roughness, specColor, F);
     float3 balancedDiff = DiffuseEnergyConserve(diffAm, F, metalness);
     
     return (balancedDiff * surfaceColor + specAm) * pointLight.Intensity * pointLight.Color * Attenuate(pointLight, input.worldPosition);
@@ -59,7 +59,7 @@ float3 HandleSpot(Light spot, VertexToPixel input, float metalness, float3 specC
     
     float diffAm = DiffusePBR(input.normal, dir);
     float3 F;
-    float specAm = MicrofacetBRDF(input.normal, normalize(dir), normalize(camPos - input.worldPosition), roughness, specColor, F);
+    float3 specAm = MicrofacetBRDF(input.normal, normalize(dir), normalize(camPos - input.worldPosition), roughness, specColor, F);
     float3 balancedDiff = DiffuseEnergyConserve(diffAm, F, metalness);
     
     float angleBtwn = cos(spot.SpotFalloff / 2);
@@ -114,9 +114,9 @@ float4 main(VertexToPixel input) : SV_TARGET
     input.normal = mul(unpackedNormal, TBN); // Note the multiplication order
     
     float3 totalLight;
-    totalLight = HandleDirLight(dir, input, metalness, specColor, albedoColor, roughness) * (shadowAmount + 0.2);
+    totalLight = HandleDirLight(dir, input, metalness, specColor, albedoColor, roughness) * (shadowAmount);
     //totalLight += HandlePoint(pt, input, metalness, specColor, albedoColor, roughness);
     //totalLight += HandleSpot(spot, input, metalness, specColor, albedoColor, roughness);
 	
-    return float4(pow(albedoColor * tint.rgb * totalLight, 1.0f / 2.2f), 1);
+    return float4(pow(totalLight, 1.0f / 2.2f), 1.0f);
 }
