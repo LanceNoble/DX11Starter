@@ -24,6 +24,7 @@ class Game: public DXCore {
 		void Draw(float deltaTime, float totalTime);
 
 	private:
+		void ResetRenderTarget();
 		void AddTextures(std::shared_ptr<Material>, const wchar_t*, const wchar_t*, const wchar_t*, const wchar_t*);
 		void Node(const char*, Ent*);
 		void LightNode(const char*, Light*);
@@ -61,4 +62,13 @@ class Game: public DXCore {
 		DirectX::XMFLOAT4X4 shadowViewMatrix;
 		DirectX::XMFLOAT4X4 shadowProjectionMatrix;
 		int shadowMapResolution; // should be a power of 2
+
+		// Resources that are shared among all post processes
+		Microsoft::WRL::ComPtr<ID3D11SamplerState> ppSampler;
+		std::shared_ptr<SimpleVertexShader> ppVS;
+		// Resources that are tied to a particular post process
+		std::shared_ptr<SimplePixelShader> ppPS;
+		Microsoft::WRL::ComPtr<ID3D11RenderTargetView> ppRTV; // For rendering
+		Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> ppSRV; // For sampling
+		int blurRadius;
 };
